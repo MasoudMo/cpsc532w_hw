@@ -22,7 +22,7 @@ def p_R_given_C(r,c):
 def p_W_given_S_R(w,s,r):
     
     p = np.array([
-            [[1.0,0.1],[0.1,0.01]],   #w = False
+            [[1.0,0.1],[0.1,0.01]],   #w = False  Had to fix this by changing 0.001 to 0.01
             [[0.0,0.9],[0.9,0.99]],   #w = True
             ])
     return p[w,s,r]
@@ -70,8 +70,48 @@ num_samples = 10000
 samples = np.zeros(num_samples)
 rejections = 0
 i = 0
-# while i < num_samples:
-    #TODO
+
+# To perform conditional rejection sampling, if we desire to sample from p[x|y'], we first sample from from p[x, y]
+# and only accept samples where y=y'
+
+
+# Very inefficient rejection sampling function assuming that we can sample from a uniform distribution
+def rejection_sampling_with_uniform(prob_to_sample):
+
+    while 1:
+        # sample from q (uniform)
+        x = np.random.randint(0, 2)
+
+        # sample uniformly from kq
+        u = np.random.uniform()
+
+        if u <= prob_to_sample[x]:
+            return x
+
+
+while i < num_samples:
+
+    # Ancestral sampling from the joint (each term is sampled using rejection sampling)
+    # P[C, S, R, W] = p[C]*p[S|C]*p[R|C]*p[W|S, R]
+
+    # Sample from P[C] - We can just use uniform sampling in this case since P[C] = [0.5 0.5]
+    c = np.random.randint(0, 2)
+
+    # Sample from p[S|C=c] using rejection sampling
+    s = rejection_sampling_with_uniform(p_S_given_C([0, 1], c))
+
+    # Sample from p[R|C]
+    r = rejection_sampling_with_uniform(p_R_given_C([0, 1], c))
+
+    # Sample from p[W|S, R]
+    w = rejection_sampling_with_uniform(p_W_given_S_R([0, 1], s, r))
+
+    if w:
+        samples[i] = c
+        i = i+1
+    else:
+        rejections += 1
+
 
 print('The chance of it being cloudy given the grass is wet is {:.2f}%'.format(samples.mean()*100))
 print('{:.2f}% of the total samples were rejected'.format(100*rejections/(samples.shape[0]+rejections)))
