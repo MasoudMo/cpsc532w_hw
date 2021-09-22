@@ -142,14 +142,32 @@ for c in range(2):
 #then create the conditional distribution:
 p_C_given_S_R = p_C_S_R[:,:,:]/p_C_S_R[:,:,:].sum(axis=(0),keepdims=True)
 
-
-
 ##gibbs sampling
 num_samples = 10000
 samples = np.zeros(num_samples)
 state = np.zeros(4,dtype='int')
 #c,s,r,w, set w = True
 
-#TODO
+# Perform Gibbs sampling by sampling from the conditionals sequentially
+
+# Sample x(0) from a uniform distribution
+state[0] = np.random.randint(0, 2) # c
+state[1] = np.random.randint(0, 2) # s
+state[2] = np.random.randint(0, 2) # r
+state[3] = 1 # w = True
+
+for i in range(num_samples):
+
+    # Sample from p[C|S,R]
+    state[0] = rejection_sampling_with_uniform(p_C_given_S_R[:, state[1], state[2]])
+
+    # Sample from p[S|C,R,W]
+    state[1] = rejection_sampling_with_uniform(p_S_given_C_R_W[state[0], :, state[2], state[3]])
+
+    # Sample from p[R|C,S,W]
+    state[2] = rejection_sampling_with_uniform(p_R_given_C_S_W[state[0], state[1], :, state[3]])
+
+    # Store the obtained c in the samples
+    samples[i] = state[0]
 
 print('The chance of it being cloudy given the grass is wet is {:.2f}%'.format(samples.mean()*100))
