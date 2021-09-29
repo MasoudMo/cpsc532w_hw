@@ -1,5 +1,6 @@
 import numpy as np
-import math
+from scipy.special import loggamma
+
 
 def joint_log_lik(doc_counts, topic_counts, alpha, gamma):
     """
@@ -17,7 +18,7 @@ def joint_log_lik(doc_counts, topic_counts, alpha, gamma):
     # We would like to compute log(p(w, z | \alpha, \gamma))
     # We have already derived a formula for p(w, z | \alpha, \gamma)
 
-    ll = 0
+    ll = 0.0
 
     number_of_tops = topic_counts.shape[0]
     number_of_docs = doc_counts.shape[0]
@@ -28,19 +29,19 @@ def joint_log_lik(doc_counts, topic_counts, alpha, gamma):
 
         # Numerator of likelihood term
         for k in range(number_of_tops):
-            ll += math.lgamma(doc_counts[d, k] + alpha)
+            ll += loggamma(doc_counts[d, k] + alpha)
 
         # Denominator of likelihood term
-        ll -= math.lgamma(np.sum(doc_counts[d, :] + alpha))
+        ll -= loggamma(np.sum(doc_counts[d, :] + alpha))
 
     # Second term in the likelihood
     for k in range(number_of_tops):
 
         # Numerator of likelihood term
         for i in range(number_of_wrds):
-            ll += math.lgamma(topic_counts[k, i] + gamma)
+            ll += loggamma(topic_counts[k, i] + gamma)
 
         # Denominator of likelihood term
-        ll -= math.lgamma(np.sum(topic_counts[k, :] + gamma))
+        ll -= loggamma(np.sum(topic_counts[k, :] + gamma))
 
     return ll

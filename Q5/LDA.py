@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from joint_log_lik import joint_log_lik
 from sample_topic_assignment import sample_topic_assignment
+import time
 
 bagofwords = loadmat('bagofwords_nips.mat')
 WS = bagofwords['WS'][0] - 1  # go to 0 indexed
@@ -60,13 +61,25 @@ topic_N = topic_counts.sum(axis=1)
 # These parameters are both scalars and really we use alpha * ones() to
 # parameterize each dirichlet distribution. Iters will set the number of
 # times your sampler will iterate.
-alpha = None
-gamma = None
-iters = None
+alpha = 0.1 # As suggested in Wikipedia
+gamma = 0.001 # As suggested in Wikipedia
+iters = 100
 
 jll = []
+max_jll = -9999999999
+chosen_topic_counts = topic_counts
+chosen_doc_counts = doc_counts
 for i in range(iters):
-    jll.append(joint_log_lik(doc_counts, topic_counts, alpha, gamma))
+    t_start = time.time()
+
+    current_jll = joint_log_lik(doc_counts, topic_counts, alpha, gamma)
+    jll.append(current_jll)
+
+    # Store the sample with highest likelihood
+    if current_jll > max_jll:
+        max_jll = current_jll
+        chosen_doc_counts = doc_counts
+        chosen_topic_counts = topic_counts
 
     prm = np.random.permutation(words.shape[0])
 
@@ -85,22 +98,52 @@ for i in range(iters):
         words,
         document_assignment)
 
-jll.append(joint_log_lik(doc_counts, topic_counts, alpha, gamma))
+    print('It took {} seconds for iteration {}. \n'.format((time.time() - t_start), i))
+
+current_jll = joint_log_lik(doc_counts, topic_counts, alpha, gamma)
+jll.append(current_jll)
+if current_jll > max_jll:
+    max_jll = current_jll
+    chosen_doc_counts = doc_counts
+    chosen_topic_counts = topic_counts
 
 plt.plot(jll)
+plt.show()
 
 ### find the 10 most probable words of the 20 topics:
-# TODO:
 fstr = ''
+for k in range(n_topics):
+    # Using the code excerpt found at:
+    # https://www.kite.com/python/answers/how-to-find-the-n-maximum-indices-of-a-numpy-array-in-python
+    frequent_words = (-chosen_topic_counts[k]).argsort()[:10]
+
+    for wrd in frequent_words:
+        fstr += str(WO[wrd][0]) + ', '
+
+    fstr += '\n'
 
 with open('most_probable_words_per_topic', 'w') as f:
     f.write(fstr)
 
 # most similar documents to document 0 by cosine similarity over topic distribution:
 # normalize topics per document and dot product:
-# TODO:
+number_of_docs = doc_counts.shape[0]
+sim_vec = np.zeros(number_of_docs-1)
+norm_doc_counts = chosen_doc_counts / np.sum(chosen_doc_counts, axis=1)[:, np.newaxis]
+first_doc = norm_doc_counts[0]
 
 fstr = ''
+for doc in range(1, number_of_docs):
+    sim_vec[doc-1] = np.dot(first_doc, norm_doc_counts[doc])
+
+# Using the code excerpt found at:
+# https://www.kite.com/python/answers/how-to-find-the-n-maximum-indices-of-a-numpy-array-in-python
+most_sim_docs = (-sim_vec).argsort()[:10]
+
+for doc in most_sim_docs:
+    fstr += str(titles[doc][0]) + ', '
+
+fstr += '\n'
 
 with open('most_similar_titles_to_0', 'w') as f:
     f.write(fstr)
