@@ -21,9 +21,9 @@ document_assignment = DS
 words = WS
 
 # subset data, EDIT THIS PART ONCE YOU ARE CONFIDENT THE MODEL IS WORKING
-# PROPERLY IN ORDER TO USE THE ENTIRE DATA SET
-words = words[document_assignment < 100]
-document_assignment = document_assignment[document_assignment < 100]
+# # PROPERLY IN ORDER TO USE THE ENTIRE DATA SET
+# words = words[document_assignment < 100]
+# document_assignment = document_assignment[document_assignment < 100]
 
 n_docs = document_assignment.max() + 1
 
@@ -66,7 +66,7 @@ gamma = 0.001 # As suggested in Wikipedia
 iters = 100
 
 jll = []
-max_jll = -9999999999
+max_jll = -999999999999999
 chosen_topic_counts = topic_counts
 chosen_doc_counts = doc_counts
 for i in range(iters):
