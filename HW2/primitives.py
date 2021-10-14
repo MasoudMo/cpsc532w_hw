@@ -458,7 +458,7 @@ primitive_funcs = {'+': add,  # Math operations
                    'sqrt': sqrt,
                    '%': mod,
                    '**': pow_op,
-                   '==': eq,  # Logical Operations
+                   '=': eq,  # Logical Operations
                    '!=': neq,
                    '>': gt,
                    '>=': gteq,
