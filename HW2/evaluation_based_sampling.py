@@ -1,5 +1,6 @@
 from daphne import daphne
 from tests import is_tol, run_prob_test, load_truth
+import torch
 
 # According to Algorithm 6, primitives should be imported here
 from primitives import primitive_funcs
@@ -35,7 +36,11 @@ def recursive_eval(e, sigma, l):
         if e in l:
             return l[e], sigma
         else:
-            return e, sigma  # Constant
+            # Change to tensor if int or float
+            if type(e) is int or type(e) is float:
+                return torch.tensor(e), sigma  # Constant
+            else:
+                return e, sigma  # Constant
 
     # Single value expressions
     elif len(e) == 1:
@@ -43,7 +48,11 @@ def recursive_eval(e, sigma, l):
         if e[0] in l:
             return l[e[0]], sigma
         else:
-            return e[0], sigma  # Constant
+            # Change to tensor if int or float
+            if type(e[0]) is int or type(e[0]) is float:
+                return torch.tensor(e[0]), sigma  # Constant
+            else:
+                return e[0], sigma  # Constant
 
     # Sample expression
     elif e[0] == 'sample':
@@ -55,7 +64,10 @@ def recursive_eval(e, sigma, l):
 
     # Let expression
     elif e[0] == 'let':
-        return None, sigma #TODO
+        # Bind the variable
+        c, sigma = recursive_eval(e[1][1], sigma, l)
+        l.update({e[1][0]: c})
+        return recursive_eval(e[2], sigma, l)
 
     # If expression
     elif e[0] == 'if':
@@ -80,12 +92,11 @@ def get_stream(ast):
     """Return a stream of prior samples"""
     while True:
         yield evaluate_program(ast)
-    
 
 
 def run_deterministic_tests():
     
-    for i in range(1, 14):
+    for i in range(14, 17):
 
         ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/tests/deterministic/test_{}.daphne'.format(i)])
         truth = load_truth('programs/tests/deterministic/test_{}.truth'.format(i))
@@ -95,12 +106,11 @@ def run_deterministic_tests():
         try:
             assert(is_tol(ret, truth))
         except AssertionError:
-            raise AssertionError('return value {} is not equal to truth {} for exp {}'.format(ret,truth,ast))
+            raise AssertionError('return value {} is not equal to truth {} for exp {}'.format(ret, truth, ast))
         
         print('Test passed')
         
     print('All deterministic tests passed')
-    
 
 
 def run_probabilistic_tests():
