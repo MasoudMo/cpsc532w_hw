@@ -4,6 +4,7 @@ from scipy.stats import kstest, norm, beta, expon
 import numpy as np
 import json
 
+
 class normalmix():
     
     def __init__(self, *args):
@@ -24,7 +25,6 @@ class normalmix():
         return sum(cdf_vals)
         
         
-        
 def is_tol(a, b):
     if type(a) == dict:
         keys_match = (set(a) == set(b))
@@ -39,12 +39,10 @@ def is_tol(a, b):
         return not torch.any(torch.logical_not(torch.abs((a - b)) < 1e-5))
 
 
-
-
 def run_prob_test(stream, truth, num_samples):
     samples = []
     for i in range(int(num_samples)):
-        samples.append(next(stream))
+        samples.append(next(stream)[0])
     
     distrs = {
             'normal' : norm,
@@ -59,6 +57,7 @@ def run_prob_test(stream, truth, num_samples):
     d,p_val = kstest(np.array(samples), truth_dist.cdf)
     
     return p_val
+
     
 def load_truth(path): # sorry this is very hacky, and will break for anything complicated
     with open(path) as f:            

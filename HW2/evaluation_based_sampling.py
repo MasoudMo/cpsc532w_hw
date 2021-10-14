@@ -6,7 +6,8 @@ import torch
 from primitives import primitive_funcs
 
 user_funcs = dict()
-        
+
+
 def evaluate_program(ast):
     """Evaluate a program as desugared by daphne, generate a sample from the prior
     Args:
@@ -47,7 +48,7 @@ def recursive_eval(e, sigma, l):
         else:
             # Change to tensor if int or float
             if type(e) is int or type(e) is float:
-                return torch.tensor(e), sigma  # Constant
+                return torch.tensor(e, dtype=torch.float32), sigma  # Constant
             else:
                 return e, sigma  # Constant
 
@@ -59,17 +60,20 @@ def recursive_eval(e, sigma, l):
         else:
             # Change to tensor if int or float
             if type(e[0]) is int or type(e[0]) is float:
-                return torch.tensor(e[0]), sigma  # Constant
+                return torch.tensor(e, dtype=torch.float32), sigma  # Constant
             else:
                 return e[0], sigma  # Constant
 
     # Sample expression
     elif e[0] == 'sample':
-        return None, sigma #TODO
+        c, sigma = recursive_eval(e[1], sigma, l)
+        return c.sample(), sigma
 
     # Observe expression
     elif e[0] == 'observe':
-        return None, sigma #TODO
+        # For now let's treat as sampling
+        c, sigma = recursive_eval(e[1], sigma, l)
+        return c.sample(), sigma
 
     # Let expression
     elif e[0] == 'let':
@@ -103,12 +107,11 @@ def recursive_eval(e, sigma, l):
             return recursive_eval(func['body'], sigma, {**l, **args_dict})
 
         # Primitive funcs
-        if e[0] in primitive_funcs:
+        elif e[0] in primitive_funcs:
             return primitive_funcs[e[0]](*c), sigma
 
-
-
-    return e, sigma
+        else:
+            return None, sigma
 
 
 def get_stream(ast):
@@ -119,7 +122,7 @@ def get_stream(ast):
 
 def run_deterministic_tests():
     
-    for i in range(21, 22):
+    for i in range(1, 22):
 
         ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/tests/deterministic/test_{}.daphne'.format(i)])
         truth = load_truth('programs/tests/deterministic/test_{}.truth'.format(i))
@@ -141,9 +144,9 @@ def run_probabilistic_tests():
     num_samples = 1e4
     max_p_value = 1e-4
     
-    for i in range(1, 7):
+    for i in range(1, 8):
 
-        ast = daphne(['desugar', '-i', '../CS532-HW2/programs/tests/probabilistic/test_{}.daphne'.format(i)])
+        ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/tests/probabilistic/test_{}.daphne'.format(i)])
         truth = load_truth('programs/tests/probabilistic/test_{}.truth'.format(i))
         
         stream = get_stream(ast)
@@ -163,6 +166,6 @@ if __name__ == '__main__':
     run_probabilistic_tests()
 
     for i in range(1, 5):
-        ast = daphne(['desugar', '-i', '../CS532-HW2/programs/{}.daphne'.format(i)])
+        ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/{}.daphne'.format(i)])
         print('\n\n\nSample of prior of program {}:'.format(i))
         print(evaluate_program(ast)[0])

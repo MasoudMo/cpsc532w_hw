@@ -1,4 +1,6 @@
 import torch
+from torch.distributions import Normal, Uniform, Beta, Bernoulli, Exponential, Categorical
+import torch.nn.functional as F
 
 
 def add(a, b):
@@ -250,7 +252,11 @@ def create_vec(*args):
         Tensor array of arguments
     """
 
-    return torch.tensor(list(args))
+    # May have dist objects as elements therefore tensor cannot always be used.
+    try:
+        return torch.stack(list(args))
+    except:
+        return list(args)
 
 
 def create_list(*args):
@@ -425,7 +431,7 @@ def get(a, n):
     """
 
     if torch.is_tensor(n):
-        n = n.item()
+        n = int(n.item())
 
     return a[n]
 
@@ -444,10 +450,185 @@ def put(a, n, b):
     """
 
     if torch.is_tensor(n):
-        n = n.item()
+        n = int(n.item())
 
     a[n] = b
     return a
+
+
+def normal(mu, sig):
+    """
+    Return a normal dist with mean mu and std sig
+
+    Args:
+        mu: mean
+        sig: std
+
+    Returns:
+        Return dist object
+    """
+
+    return Normal(mu, sig)
+
+
+def uniform(start, end):
+    """
+    Return a uniform over [start, end]
+
+    Args:
+        start: starting value
+        end: last value
+
+    Returns:
+        Return dist object
+    """
+
+    return Uniform(start, end)
+
+
+def beta(a, b):
+    """
+    Beta distribution
+
+    Args:
+        a: conc 0
+        b: conc 1
+
+    Returns:
+        Return dist object
+    """
+
+    return Beta(a, b)
+
+
+def bernoulli(p):
+    """
+    Bernoulli distribution
+
+    Args:
+        p: prob
+
+    Returns:
+        Return dist object
+    """
+
+    return Bernoulli(p)
+
+
+def exponential(r):
+    """
+    Exponential distribution
+
+    Args:
+        r: rate
+
+    Returns:
+        Return dist object
+    """
+
+    return Exponential(r)
+
+
+def discrete(p):
+    """
+    Categorical distribution
+
+    Args:
+        p: torch tensor of probs
+
+    Returns:
+        dist object
+    """
+
+    return Categorical(p)
+
+
+def matmul(a, b):
+    """
+    Matrix multiplication
+
+    Args:
+        a: torch tensor
+        b: torch tensor
+
+    Returns:
+        a*b
+    """
+
+    return torch.matmul(a, b)
+
+
+def matadd(a, b):
+    """
+    Matrix Addition
+
+    Args:
+        a: torch tensor
+        b: torch tensor
+
+    Returns:
+        a+b
+    """
+
+    return a + b
+
+
+def mattranspose(a):
+    """
+    Transpose matrix
+
+    Args:
+        a: torch tensor
+
+    Returns:
+        Tranposed a
+    """
+
+    return a.T
+
+
+def mattanh(a):
+    """
+    Tanh activation on matrix
+
+    Args:
+        a: torch tensor
+
+    Returns:
+        tanh(a)
+    """
+
+    return F.tanh(a)
+
+
+def matrelu(a):
+    """
+    ReLu activation on matrix
+
+    Args:
+        a: torch tensor
+
+    Returns:
+        relu(a)
+    """
+
+    return F.relu(a)
+
+
+def matrepmat(a, n, m):
+    """
+    Repeats a n*m times
+
+    Args:
+        a: torch tensor
+        n: torch tensor
+        m: torch tensor
+
+    Returns:
+        a repated over n rows and m columns
+    """
+
+    return a.repeat(int(n.item()), int(m.item()))
 
 
 # Mapping between strings and primitive functions
@@ -478,6 +659,16 @@ primitive_funcs = {'+': add,  # Math operations
                    'cons': cons,
                    'append': append,
                    'get': get,
-                   'put': put} #TODO: Add mat operations
-
-# TODO: Add distributions
+                   'put': put,
+                   'mat-mul': matmul,  # Matrix operations
+                   'mat-add': matadd,
+                   'mat-transpose': mattranspose,
+                   'mat-tanh': mattanh,
+                   'mat-relu': matrelu,
+                   'mat-repmat': matrepmat,
+                   'normal': normal,  # Distributions
+                   'uniform': uniform,
+                   'beta': beta,
+                   'bernoulli': bernoulli,
+                   'exponential': exponential,
+                   'discrete': discrete}
