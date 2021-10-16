@@ -47,7 +47,7 @@ def sample_topic_assignment(topic_assignment,
         # Assign a value to probability of each topic for z of this word
         for k in range(number_of_tops):
             topic_dist[k] = ((doc_counts[document_assignment[i], k] + alpha) /
-                             (doc_N[document_assignment[i]] + number_of_tops*alpha)) + \
+                             (doc_N[document_assignment[i]] + number_of_tops*alpha)) * \
                             ((topic_counts[k, w] + gamma)/(topic_N[k] + alphabet_size*gamma))
 
         # Normalize the obtained distribution
