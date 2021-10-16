@@ -161,11 +161,11 @@ def run_probabilistic_tests():
         
 if __name__ == '__main__':
 
-    run_deterministic_tests()
+    # run_deterministic_tests()
     
     run_probabilistic_tests()
 
     for i in range(1, 5):
         ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/{}.daphne'.format(i)])
         print('\n\n\nSample of prior of program {}:'.format(i))
-        print(evaluate_program(ast)[0])
+        print(evaluate_program(ast))

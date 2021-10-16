@@ -13,123 +13,123 @@ if __name__ == '__main__':
 
     ############################################################################
     # Program 1
-    # graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/1.daphne'])
-    # ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/1.daphne'])
-    #
-    # gb_samples = list()
-    # ev_samples = list()
-    #
-    # for j in range(1000):
-    #     gb_samples.append(float(sample_from_joint(graph).numpy()))
-    #     ev_samples.append(float(evaluate_program(ast).numpy()))
-    #
-    # print("Program 1: Marginal Expectation for Eval Based with 1000 samples = {}".format(sum(gb_samples)/1000))
-    # print("Program 1: Marginal Expectation for Graph Based with 1000 samples = {} \n \n".format(sum(ev_samples)/1000))
-    #
-    # fig, axs = plt.subplots(1, 2)
-    #
-    # axs[0].hist(gb_samples, bins=20)
-    # axs[0].set_title('1000 Graph Based Samples')
-    # axs[0].set_xlabel('Sample Value Bins')
-    # axs[0].set_ylabel('Frequency')
-    #
-    # axs[1].hist(ev_samples, bins=20)
-    # axs[1].set_title('1000 Graph Based Samples')
-    # axs[1].set_xlabel('Sample Value Bins')
-    # axs[1].set_ylabel('Frequency')
-    #
-    # plt.show()
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/1.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/1.daphne'])
+
+    gb_samples = list()
+    ev_samples = list()
+
+    for j in range(1000):
+        gb_samples.append(float(sample_from_joint(graph).numpy()))
+        ev_samples.append(float(evaluate_program(ast).numpy()))
+
+    print("Program 1: Marginal Expectation for Eval Based with 1000 samples = {}".format(sum(gb_samples)/1000))
+    print("Program 1: Marginal Expectation for Graph Based with 1000 samples = {} \n \n".format(sum(ev_samples)/1000))
+
+    fig, axs = plt.subplots(1, 2)
+
+    axs[0].hist(gb_samples, bins=20)
+    axs[0].set_title('1000 Graph Based Samples')
+    axs[0].set_xlabel('Sample Value Bins')
+    axs[0].set_ylabel('Frequency')
+
+    axs[1].hist(ev_samples, bins=20)
+    axs[1].set_title('1000 Evaluation Based Samples')
+    axs[1].set_xlabel('Sample Value Bins')
+    axs[1].set_ylabel('Frequency')
+
+    plt.show()
     ############################################################################
 
     ############################################################################
     # Program 2
-    # graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/2.daphne'])
-    # ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/2.daphne'])
-    #
-    # gb_samples = np.zeros((2, 1000))
-    # ev_samples = np.zeros((2, 1000))
-    #
-    # for j in range(1000):
-    #     gb_samples[:, j] = sample_from_joint(graph).numpy()
-    #     ev_samples[:, j] = evaluate_program(ast).numpy()
-    #
-    # print("Program 2: Marginal Expectation for dim 0 for Graph Based with 1000 samples = {}".format(np.sum(
-    #     gb_samples[0, :]) / 1000))
-    #
-    # print("Program 2: Marginal Expectation for dim 1 for Graph Based with 1000 samples = {}".format(np.sum(
-    #     gb_samples[1, :]) / 1000))
-    #
-    # print("Program 2: Marginal Expectation for dim 0 for Eval Based with 1000 samples = {}".format(np.sum(
-    #     ev_samples[0, :]) / 1000))
-    #
-    # print("Program 2: Marginal Expectation for dim 1 for Eval Based with 1000 samples = {}".format(np.sum(
-    #     ev_samples[1, :]) / 1000))
-    #
-    # fig, axs = plt.subplots(2, 2)
-    #
-    # for dim in range(2):
-    #
-    #     print("Program 2: Marginal Expectation for dim {} for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_samples[dim, :]) / 1000))
-    #
-    #     print("Program 2: Marginal Expectation for dim {} for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_samples[dim, :]) / 1000))
-    #
-    #     axs[0, dim].hist(gb_samples[dim, :], bins=20)
-    #     axs[0, dim].set_title('1000 Graph Based Samples Dim {}'.format(dim))
-    #     axs[0, dim].set_xlabel('Sample Value Bins')
-    #     axs[0, dim].set_ylabel('Frequency')
-    #
-    #     axs[1, dim].hist(ev_samples[dim, :], bins=20)
-    #     axs[1, dim].set_title('1000 Eval Based Samples Dim {}'.format(dim))
-    #     axs[1, dim].set_xlabel('Sample Value Bins')
-    #     axs[1, dim].set_ylabel('Frequency')
-    #
-    # plt.show()
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/2.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/2.daphne'])
+
+    gb_samples = np.zeros((2, 1000))
+    ev_samples = np.zeros((2, 1000))
+
+    for j in range(1000):
+        gb_samples[:, j] = sample_from_joint(graph).numpy()
+        ev_samples[:, j] = evaluate_program(ast).numpy()
+
+    print("Program 2: Marginal Expectation for dim 0 for Graph Based with 1000 samples = {}".format(np.sum(
+        gb_samples[0, :]) / 1000))
+
+    print("Program 2: Marginal Expectation for dim 1 for Graph Based with 1000 samples = {}".format(np.sum(
+        gb_samples[1, :]) / 1000))
+
+    print("Program 2: Marginal Expectation for dim 0 for Eval Based with 1000 samples = {}".format(np.sum(
+        ev_samples[0, :]) / 1000))
+
+    print("Program 2: Marginal Expectation for dim 1 for Eval Based with 1000 samples = {}".format(np.sum(
+        ev_samples[1, :]) / 1000))
+
+    fig, axs = plt.subplots(2, 2)
+
+    for dim in range(2):
+
+        print("Program 2: Marginal Expectation for dim {} for Graph Based with 1000 samples = {}".format(dim, np.sum(
+            gb_samples[dim, :]) / 1000))
+
+        print("Program 2: Marginal Expectation for dim {} for Eval Based with 1000 samples = {}".format(dim, np.sum(
+            ev_samples[dim, :]) / 1000))
+
+        axs[0, dim].hist(gb_samples[dim, :], bins=20)
+        axs[0, dim].set_title('1000 Graph Based Samples Dim {}'.format(dim))
+        axs[0, dim].set_xlabel('Sample Value Bins')
+        axs[0, dim].set_ylabel('Frequency')
+
+        axs[1, dim].hist(ev_samples[dim, :], bins=20)
+        axs[1, dim].set_title('1000 Eval Based Samples Dim {}'.format(dim))
+        axs[1, dim].set_xlabel('Sample Value Bins')
+        axs[1, dim].set_ylabel('Frequency')
+
+    plt.show()
 
     ############################################################################
     # Program 3
-    # graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/3.daphne'])
-    # ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/3.daphne'])
-    #
-    # gb_samples = np.zeros((17, 1000))
-    # ev_samples = np.zeros((17, 1000))
-    #
-    # for j in range(1000):
-    #     gb_samples[:, j] = sample_from_joint(graph).numpy()
-    #     ev_samples[:, j] = evaluate_program(ast).numpy()
-    #
-    # fig0, axs0 = plt.subplots(5, 4)
-    # fig1, axs1 = plt.subplots(5, 4)
-    # fig0.tight_layout(pad=0.5)
-    # fig1.tight_layout(pad=0.5)
-    #
-    # for dim in range(17):
-    #
-    #     print("Program 3: Marginal Expectation for dim {} for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_samples[dim, :]) / 1000))
-    #
-    #     print("Program 3: Marginal Expectation for dim {} for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_samples[dim, :]) / 1000))
-    #
-    #     axs0[int(dim / 4), int(dim % 4)].hist(gb_samples[dim, :], bins=20)
-    #     axs0[int(dim / 4), int(dim % 4)].set_title('1000 Graph Based Samples Dim {}'.format(dim), fontsize=10)
-    #     axs0[int(dim / 4), int(dim % 4)].set_xlabel('Sample Value Bins')
-    #     axs0[int(dim / 4), int(dim % 4)].set_ylabel('Frequency')
-    #
-    #     axs1[int(dim / 4), int(dim % 4)].hist(ev_samples[dim, :], bins=20)
-    #     axs1[int(dim / 4), int(dim % 4)].set_title('1000 Eval Based Samples Dim {}'.format(dim), fontsize=10)
-    #     axs1[int(dim / 4), int(dim % 4)].set_xlabel('Sample Value Bins')
-    #     axs1[int(dim / 4), int(dim % 4)].set_ylabel('Frequency')
-    #
-    # fig0.delaxes(axs0[4, 1])
-    # fig1.delaxes(axs1[4, 1])
-    # fig0.delaxes(axs0[4, 2])
-    # fig1.delaxes(axs1[4, 2])
-    # fig0.delaxes(axs0[4, 3])
-    # fig1.delaxes(axs1[4, 3])
-    #
-    # plt.show()
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/3.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/3.daphne'])
+
+    gb_samples = np.zeros((17, 1000))
+    ev_samples = np.zeros((17, 1000))
+
+    for j in range(1000):
+        gb_samples[:, j] = sample_from_joint(graph).numpy()
+        ev_samples[:, j] = evaluate_program(ast).numpy()
+
+    fig0, axs0 = plt.subplots(5, 4)
+    fig1, axs1 = plt.subplots(5, 4)
+    fig0.tight_layout(pad=0.5)
+    fig1.tight_layout(pad=0.5)
+
+    for dim in range(17):
+
+        print("Program 3: Marginal Expectation for dim {} for Graph Based with 1000 samples = {}".format(dim, np.sum(
+            gb_samples[dim, :]) / 1000))
+
+        print("Program 3: Marginal Expectation for dim {} for Eval Based with 1000 samples = {}".format(dim, np.sum(
+            ev_samples[dim, :]) / 1000))
+
+        axs0[int(dim / 4), int(dim % 4)].hist(gb_samples[dim, :], bins=20)
+        axs0[int(dim / 4), int(dim % 4)].set_title('1000 Graph Based Samples Dim {}'.format(dim), fontsize=10)
+        axs0[int(dim / 4), int(dim % 4)].set_xlabel('Sample Value Bins')
+        axs0[int(dim / 4), int(dim % 4)].set_ylabel('Frequency')
+
+        axs1[int(dim / 4), int(dim % 4)].hist(ev_samples[dim, :], bins=20)
+        axs1[int(dim / 4), int(dim % 4)].set_title('1000 Eval Based Samples Dim {}'.format(dim), fontsize=10)
+        axs1[int(dim / 4), int(dim % 4)].set_xlabel('Sample Value Bins')
+        axs1[int(dim / 4), int(dim % 4)].set_ylabel('Frequency')
+
+    fig0.delaxes(axs0[4, 1])
+    fig1.delaxes(axs1[4, 1])
+    fig0.delaxes(axs0[4, 2])
+    fig1.delaxes(axs1[4, 2])
+    fig0.delaxes(axs0[4, 3])
+    fig1.delaxes(axs1[4, 3])
+
+    plt.show()
 
     ############################################################################
     # Program 4
@@ -166,19 +166,19 @@ if __name__ == '__main__':
 
     ax0 = plt.axes()
     sns.heatmap(gb_w1_mean, ax=ax0, annot=True)
-    ax0.set_title('W0 Mean for Graph Based Sampling')
+    ax0.set_title('W1 Mean for Graph Based Sampling')
 
     ax1 = plt.axes()
     sns.heatmap(gb_w1_std, ax=ax1, annot=True)
-    ax1.set_title('W0 STD for Graph Based Sampling')
+    ax1.set_title('W1 STD for Graph Based Sampling')
 
     ax2 = plt.axes()
     sns.heatmap(ev_w1_mean, ax=ax2, annot=True)
-    ax2.set_title('W0 Mean for Eval Based Sampling')
+    ax2.set_title('W1 Mean for Eval Based Sampling')
 
     ax3 = plt.axes()
     sns.heatmap(ev_w1_std, ax=ax3, annot=True)
-    ax3.set_title('W0 STD for Eval Based Sampling')
+    ax3.set_title('W1 STD for Eval Based Sampling')
 
     # Plot the rest
     fig0, axs0 = plt.subplots(2, 5)
@@ -240,4 +240,3 @@ if __name__ == '__main__':
         axs5[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
 
     plt.show()
-    print('hey')
