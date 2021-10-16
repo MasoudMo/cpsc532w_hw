@@ -598,7 +598,7 @@ def mattanh(a):
         tanh(a)
     """
 
-    return F.tanh(a)
+    return torch.tanh(a)
 
 
 def matrelu(a):

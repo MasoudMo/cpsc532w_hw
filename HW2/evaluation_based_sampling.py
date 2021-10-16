@@ -24,7 +24,7 @@ def evaluate_program(ast):
 
     ret, sigma = recursive_eval(ast[idx], {}, {})
 
-    return ret, sigma
+    return ret
 
 
 def recursive_eval(e, sigma, l):
@@ -83,7 +83,7 @@ def recursive_eval(e, sigma, l):
         return recursive_eval(e[2], sigma, l)
 
     # If expression
-    elif e[0] == 'if': #TODO: Ensure whether lazy or eager is required here
+    elif e[0] == 'if':
         c, sigma = recursive_eval(e[1], sigma, l)
 
         if c:
@@ -127,7 +127,7 @@ def run_deterministic_tests():
         ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/tests/deterministic/test_{}.daphne'.format(i)])
         truth = load_truth('programs/tests/deterministic/test_{}.truth'.format(i))
 
-        ret, sig = evaluate_program(ast)
+        ret = evaluate_program(ast)
 
         try:
             assert(is_tol(ret, truth))
