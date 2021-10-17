@@ -306,6 +306,20 @@ def first(a):
     return a[0]
 
 
+def second(a):
+    """
+    Returns the second element
+
+    Args:
+        a: list or vector
+
+    Returns:
+        Second element
+    """
+
+    return a[1]
+
+
 def rest(a):
     """
     Returns elements except for first
@@ -652,6 +666,7 @@ primitive_funcs = {'+': add,  # Math operations
                    'list': create_list,
                    'hash-map': create_dict,
                    'first': first,  # Data structure methods
+                   'second': second,
                    'rest': rest,
                    'last': last,
                    'nth': nth,

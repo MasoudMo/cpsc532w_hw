@@ -42,7 +42,7 @@ def is_tol(a, b):
 def run_prob_test(stream, truth, num_samples):
     samples = []
     for i in range(int(num_samples)):
-        samples.append(next(stream)[0])
+        samples.append(next(stream))
     
     distrs = {
             'normal' : norm,
