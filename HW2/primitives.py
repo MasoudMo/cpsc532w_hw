@@ -107,6 +107,20 @@ def pow_op(a, b):
     return a ** b
 
 
+def exp(a):
+    """
+    Perform e^a
+
+    Args:
+        a: exponent
+
+    Returns:
+        e^a
+    """
+
+    return torch.exp(a)
+
+
 def eq(a, b):
     """
     return a==b
@@ -656,6 +670,7 @@ primitive_funcs = {'+': add,  # Math operations
                    'sqrt': sqrt,
                    '%': mod,
                    '**': pow_op,
+                   'exp': exp,
                    '=': eq,  # Logical Operations
                    '!=': neq,
                    '>': gt,
