@@ -360,6 +360,9 @@ def nth(a, n):
         nth element
     """
 
+    if torch.is_tensor(n):
+        n = int(n.item())
+        
     return a[n]
 
 
