@@ -161,7 +161,7 @@ def run_probabilistic_tests():
         
 if __name__ == '__main__':
 
-    # run_deterministic_tests()
+    run_deterministic_tests()
     
     run_probabilistic_tests()
 
