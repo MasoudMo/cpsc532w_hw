@@ -1,5 +1,5 @@
 import torch
-from torch.distributions import Normal, Uniform, Beta, Bernoulli, Exponential, Categorical
+from torch.distributions import Normal, Uniform, Beta, Bernoulli, Exponential, Categorical, Gamma, Dirichlet
 import torch.nn.functional as F
 
 
@@ -574,6 +574,35 @@ def discrete(p):
     return Categorical(p)
 
 
+def gamma(a, b):
+    """
+    Gamma distribution
+
+    Args:
+        a: concentration
+        b: rate
+
+    Returns:
+        Return dist object
+    """
+
+    return Gamma(a, b)
+
+
+def dirichlet(a):
+    """
+    Dirichlet distribution
+
+    Args:
+        a: concentration
+
+    Returns:
+        Return dist object
+    """
+
+    return Dirichlet(a)
+
+
 def matmul(a, b):
     """
     Matrix multiplication
@@ -587,6 +616,46 @@ def matmul(a, b):
     """
 
     return torch.matmul(a, b)
+
+
+class Dirac:
+    """
+    An implementation for dirac distribution
+    """
+
+    def __init__(self, a):
+        """
+        Constructor
+
+        Args:
+            a: value where prob is 1
+        """
+        self.center = a
+
+    def sample(self):
+        """
+        sample method
+
+        Returns:
+            Simply returns the center value as all other values have a probability of 0
+        """
+        return self.center
+
+    def log_prob(self, b):
+        """
+        Log of likelihood probability
+
+        Args:
+            b: Value of observed
+
+        Returns:
+            1 if b is equal to center, 0 otherwise
+        """
+
+        if self.center == b:
+            return torch.log(torch.tensor(1))
+        else:
+            return torch.tensor(-float('Inf'))
 
 
 def matadd(a, b):
@@ -680,6 +749,8 @@ primitive_funcs = {'+': add,  # Math operations
                    'and': and_op,
                    'or': or_op,
                    'not': not_op,
+                   'true': torch.tensor(True),
+                   'false': torch.tensor(False),
                    'vector': create_vec,  # Data structures
                    'list': create_list,
                    'hash-map': create_dict,
@@ -701,4 +772,11 @@ primitive_funcs = {'+': add,  # Math operations
                    'mat-repmat': matrepmat,
                    'normal': normal,  # Distributions
                    'uniform': uniform,
-                   'beta': beta, 'bernoulli': bernoulli, 'exponential': exponential,'discrete': discrete}
+                   'beta': beta,
+                   'bernoulli': bernoulli,
+                   'exponential': exponential,
+                   'discrete': discrete,
+                   'gamma': gamma,
+                   'dirichlet': dirichlet,
+                   'flip': bernoulli,
+                   'dirac': Dirac}

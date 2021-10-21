@@ -99,8 +99,12 @@ def recursive_eval(e, sigma, l):
         if e in l:
             return l[e], sigma
         else:
+            if e in primitive_funcs:
+                return primitive_funcs[e], sigma
+            elif type(e) == bool:
+                return torch.tensor(e), sigma
             # Change to tensor if int or float
-            if type(e) is int or type(e) is float:
+            elif type(e) is int or type(e) is float:
                 return torch.tensor(e, dtype=torch.float32), sigma  # Constant
             else:
                 return e, sigma  # Constant
@@ -111,6 +115,10 @@ def recursive_eval(e, sigma, l):
         if e[0] in l:
             return l[e[0]], sigma
         else:
+            if e in primitive_funcs:
+                return primitive_funcs[e], sigma
+            elif type(e) == bool:
+                return torch.tensor(e), sigma
             # Change to tensor if int or float
             if type(e[0]) is int or type(e[0]) is float:
                 return torch.tensor(e, dtype=torch.float32), sigma  # Constant
@@ -134,6 +142,9 @@ def recursive_eval(e, sigma, l):
 
         # Evaluate e2 to a constant, which is the observed value of y
         c, sigma = recursive_eval(e[2], sigma, l)
+
+        # This trick would ensure that true/false values are changed into 0 and 1
+        c = c * 1.0
 
         # Aggregate the log probability of c under d into logW
         sigma['logW'] += d.log_prob(c)
@@ -229,17 +240,17 @@ if __name__ == '__main__':
     # run_deterministic_tests()
     #
     # run_probabilistic_tests()
-
-    for i in range(1, 5):
-        ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/{}.daphne'.format(i)])
+    for i in range(5, 6):
+        ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/{}.daphne'.format(i)])
 
         # Compute program runtime
         t_start = time.time()
 
-        iterations = 10000
+        iterations = 1000000
 
         weighted_samples = evaluate_likelihood_weighting(ast, iterations)
-        posterior_expctation = compute_identity_is_expectation(weighted_samples)
-        print('The posterior expectation is {}.'.format(posterior_expctation))
 
-        print('It took {} seconds for sampler with {} iterations. \n'.format((time.time() - t_start), iterations))
+        print('It took {} seconds for sampler with {} iterations.'.format((time.time() - t_start), iterations))
+
+        posterior_expctation = compute_identity_is_expectation(weighted_samples)
+        print('The posterior expectation is {}. \n'.format(posterior_expctation))
