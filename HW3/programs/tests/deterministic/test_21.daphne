@@ -1,0 +1,5 @@
+(defn masoud [a b c]
+  (let [d 3
+        e 4]
+    (/ (+ (+ (+ a d) b) c) e)))
+(masoud 2 2 1)
