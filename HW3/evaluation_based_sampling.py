@@ -68,15 +68,19 @@ def compute_identity_is_expectation(weighted_samples):
         Expectation of posterior for identity function
     """
 
+    # Extract the samples
     samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples])
 
+    # Ensure correct shape for multiplication with W
     if len(samples.shape) == 1:
         samples = np.expand_dims(samples, axis=1)
 
+    # Obtain log weights and exp them to obtain actual weights
     log_weights = np.array([weighted_sample[1] for weighted_sample in weighted_samples])
     weights = np.exp(log_weights)
     weights = np.expand_dims(weights, axis=1)
 
+    # Perform weighted average
     return np.sum((samples * weights) / np.sum(weights), axis=0)
 
 
@@ -240,17 +244,18 @@ if __name__ == '__main__':
     # run_deterministic_tests()
     #
     # run_probabilistic_tests()
-    for i in range(5, 6):
+
+    for i in range(1, 5):
         ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/{}.daphne'.format(i)])
 
         # Compute program runtime
         t_start = time.time()
 
-        iterations = 1000000
+        iterations = 500000
 
         weighted_samples = evaluate_likelihood_weighting(ast, iterations)
 
         print('It took {} seconds for sampler with {} iterations.'.format((time.time() - t_start), iterations))
 
-        posterior_expctation = compute_identity_is_expectation(weighted_samples)
-        print('The posterior expectation is {}. \n'.format(posterior_expctation))
+        posterior_expectation = compute_identity_is_expectation(weighted_samples)
+        print('The posterior expectation is {}. \n'.format(posterior_expectation))

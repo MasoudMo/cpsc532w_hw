@@ -1,50 +1,442 @@
 import torch
 import torch.distributions as dist
-
 from daphne import daphne
-
+import numpy as np
 from primitives import primitive_funcs
 from tests import is_tol, run_prob_test, load_truth
 from evaluation_based_sampling import recursive_eval, user_funcs
+import time
+import copy
 
 # Put all function mappings from the deterministic language environment to your
 # Python evaluation context here:
 env = primitive_funcs
 
 
-# Evaluator for link functions
-def evaluate_link_func(expression, local_env, user_defns):
+######################################## MH WITHING GIBBS ##################################################
+
+def flatten_list(alist):
     """
-    Evaluates the link functions
+    Return the flattened version of multi-dim list
+    Implementation was borrowed from https://stackabuse.com/python-how-to-flatten-list-of-lists/
 
     Args:
-        user_defns: Dictionary of user definitions
-        expression: Expression to be evaluated
-        local_env: Dict containing variable bindings
+        alist: multi-dim list
 
     Returns:
-        Expression return value
+        Flattened version of list
     """
 
-    for func in user_defns.items():
-        user_funcs.update({func[0]: {'args': func[1][1], 'body': func[1][2]}})
+    if len(alist) == 0:
+        return alist
+    if isinstance(alist[0], list):
+        return flatten_list(alist[0]) + flatten_list(alist[1:])
 
-    ret, sigma = recursive_eval(expression, {}, local_env)
-
-    return ret
+    return alist[:1] + flatten_list(alist[1:])
 
 
-def deterministic_eval(exp):
-    "Evaluation function for the deterministic target language of the graph based representation."
-    if type(exp) is list:
-        op = exp[0]
-        args = exp[1:]
-        return env[op](*map(deterministic_eval, args))
-    elif type(exp) is int or type(exp) is float:
-        # We use torch for all numerical objects in our evaluator
-        return torch.tensor(float(exp))
-    else:
-        raise("Expression type unknown.", exp)
+def markov_blanket(graph):
+    """
+    Find the markov blanket of latent variables in the graph
+
+    Args:
+        graph: graph structure as obtained from Daphne
+
+    Returns:
+        Markov blanket for the node
+    """
+
+    nodes = graph[1]['V']
+    edges = graph[1]['A']
+    link_funcs = graph[1]['P']
+    observed_nodes = graph[1]['Y']
+
+    # List containing blanket nodes
+    mk_blankets = {}
+
+    # Find the blanket for x
+    for x in nodes:
+        if x not in observed_nodes:
+            temp = {x: [x]}
+
+            # parents
+            # for term in flatten_list(link_funcs[x]):
+            #     if term in nodes:
+            #         temp[x].append(term)
+
+            # Find children of x
+            for child in edges[x]:
+                temp[x].append(child)
+
+                # Find parents of children
+                # for term in flatten_list(link_funcs[child]):
+                #     if term in nodes and term != x:
+                #         temp[x].append(term)
+
+            temp[x] = list(set(temp[x]))
+            mk_blankets.update(temp)
+
+    return mk_blankets
+
+
+def gibbs_accept(graph, node_values, new_node_values, x, V_x):
+    """
+    Compute the acceptance ratio
+
+    Args:
+        graph: Graph structure as obtained from Daphne
+        node_values: Old node values dict
+        new_node_values: New node values dict
+        x: The node to evaluate acceptance ratio for
+        V_x: markov blanket for x
+
+    Returns:
+        Acceptance ratio
+    """
+
+    user_defns = graph[0]
+    link_funcs = graph[1]['P']
+
+    # Evaluate a dist object for x --> x'
+    d = evaluate_link_func(link_funcs[x][1], node_values, user_defns)
+
+    # Evaluate a dist object for x' --> x
+    d_p = evaluate_link_func(link_funcs[x][1], new_node_values, user_defns)
+
+    log_alpha = d_p.log_prob(node_values[x]) - d.log_prob(new_node_values[x])
+
+    # Sample from joint of blanket
+    for v in V_x:
+        log_alpha += evaluate_link_func(link_funcs[v][1], new_node_values,
+                                        user_defns).log_prob(new_node_values[v] * 1.0)
+        log_alpha -= evaluate_link_func(link_funcs[v][1], node_values,
+                                        user_defns).log_prob(node_values[v] * 1.0)
+
+    return torch.exp(log_alpha)
+
+
+def gibbs_step(graph, node_values, mk_blankets):
+    """
+    Performs one step of Gibbs sampling
+
+    Args:
+        graph: Graph structure as obtained from Daphne
+        node_values: Node values dictionary
+        mk_blankets: Dict containing markov blankets for each node
+
+    Returns:
+        New node values in the graph after Gibbs step
+    """
+
+    user_defns = graph[0]
+    nodes = graph[1]['V']
+    link_funcs = graph[1]['P']
+    observed_values = graph[1]['Y']
+
+    uniform_dist = dist.Uniform(0, 1)
+
+    # only traverse through latent variables (not the observed ones)
+    for x in nodes:
+        if x not in observed_values:
+            # Get the proposed distribution from prior
+            d = evaluate_link_func(link_funcs[x][1], node_values, user_defns)
+
+            # Copy current node values and replace the newly sampled one
+            new_node_values = node_values.copy()
+            new_node_values[x] = d.sample()
+
+            # Determine the acceptance ratio
+            acceptance_ratio = gibbs_accept(graph, node_values, new_node_values, x, mk_blankets[x])
+
+            # Sample from uniform
+            u = uniform_dist.sample()
+
+            # Reject or accept sample
+            if u < acceptance_ratio:
+                node_values = new_node_values
+
+    return node_values
+
+
+def gibbs(graph, num_iterations):
+    """
+
+    Args:
+        graph: Graph structure as obtained form Daphne
+        num_iterations: Number of Gibbs sampling iterations
+        joint_log: Indicates whether joint log probabilities are also returned
+
+    Returns:
+        Samples
+    """
+
+    # Compute the markov blanket for all latent variables (this is done here to save computation time)
+    # Alternatively, this markov blanket could be computed each time in gibbs_accept
+    mk_blankets = markov_blanket(graph)
+
+    # Need to obtain initial values for latent variables (X[0])
+    node_values = sample_from_joint(graph, only_latent_vars=True)
+
+    # list holding sample values
+    sampled_node_values = list()
+    sampled_node_values.append(node_values)
+
+    # Obtain node values for multiple iterations of Gibbs
+    for s in range(num_iterations):
+        sampled_node_values.append(gibbs_step(graph, sampled_node_values[-1], mk_blankets))
+
+    return sampled_node_values[1:]
+
+
+def gibbs_expectation(expression, sampled_node_values):
+    """
+    Compute the posterior expectation using Gibbs samples
+
+    Args:
+        sampled_node_values: list of node values
+
+    Returns:
+        Posterior expectation
+    """
+
+    # List containing output expression values
+    sampled_values = list()
+    for v in sampled_node_values:
+        sample, _ = recursive_eval(expression, {}, v)
+        sampled_values.append(np.array(sample))
+
+    sampled_values = np.array(sampled_values)
+    # Ensure correct shape
+    if len(sampled_values.shape) == 1:
+        sampled_values = np.expand_dims(sampled_values, axis=1)
+
+    return np.sum(sampled_values, axis=0) / sampled_values.shape[0]
+
+###########################################################################################################
+
+################################################## HMC ####################################################
+
+
+def hmc_potential(graph, Y, X):
+    """
+    Compute the potential as -log joint probability of X
+
+    Args:
+        graph:
+        Y:
+        X:
+
+    Returns:
+
+    """
+
+    user_defns = graph[0]
+    link_funcs = graph[1]['P']
+
+    # gamma = p(X, Y=observed)
+    log_gamma = 0
+
+    node_values = {**X, **Y}
+    for node in node_values:
+        log_gamma -= evaluate_link_func(link_funcs[node][1], node_values, user_defns).log_prob(node_values[node] * 1.0)
+
+    return log_gamma
+
+
+def hmc_grad_potential(graph, Y, X):
+    """
+    Compute the gradient of U with respect to X
+
+    Args:
+        graph:
+        Y:
+        X:
+
+    Returns:
+
+    """
+
+    # Forward path
+    U = hmc_potential(graph, Y, X)
+
+    # Zero the gradients
+    for node in X:
+        if X[node].grad is not None:
+            X[node].grad.zero_()
+
+    # Run backward
+    U.backward()
+
+    # Extract the gradients
+    grads = torch.empty(len(X))
+
+    for i, node in enumerate(X):
+            grads[i] = X[node].grad
+
+    return grads
+
+
+def hmc_leap_frog(graph, Y, X, R, T, eps):
+    """
+    Performs leap frog integration for HMC
+
+    Args:
+        graph:
+        Y:
+        X:
+        R:
+        T:
+        eps:
+
+    Returns:
+
+    """
+
+    # Initial momentum
+    R_half_t = R - 0.5 * eps * hmc_grad_potential(graph, Y, X)
+
+    for t in range(T):
+
+        with torch.no_grad():
+            for i, node in enumerate(X):
+                X[node] = X[node] + eps * R_half_t[i]
+
+        for node in X:
+            X[node].requires_grad = True
+
+        R_half_t = R_half_t - eps * hmc_grad_potential(graph, Y, X)
+
+    with torch.no_grad():
+        for i, node in enumerate(X):
+            X[node] = X[node] + eps * R_half_t[i]
+
+    for node in X:
+        X[node].requires_grad = True
+
+    R_half_t = R_half_t - 0.5 * eps * hmc_grad_potential(graph, Y, X)
+
+    return X, R_half_t
+
+
+def hmc_hamiltonian(graph, Y, X, R, M):
+
+    U = hmc_potential(graph, Y, X)
+
+
+    # In this case M = M_inverse
+    K = torch.matmul(R.T, torch.matmul(M, R)) * 0.5
+
+    return U + K
+
+
+def hmc_accept(graph, Y, X, R, new_X, R_p, M):
+    """
+    Compute HMC acceptance ratio
+
+    Args:
+        graph:
+        Y:
+        X:
+        R:
+        new_X:
+        R_p:
+        M_ivn:
+
+    Returns:
+
+    """
+
+    return torch.exp(-1.0 * hmc_hamiltonian(graph, Y, new_X, R_p, M) +
+                     hmc_hamiltonian(graph, Y, X, R, M))
+
+
+def hmc(graph, S, T, eps, M):
+    """
+    Perform HMC sampling
+
+    Args:
+        graph: graph structure as obtained from Daphne
+        S: Number of iterations to run HMC for
+        T: Number of steps taken in the force field at each iteration
+        eps: Length of each step
+        M: Covariance of mass points
+
+    Returns:
+        List of sampled node values
+    """
+
+    observed_nodes = graph[1]['Y']
+
+    # Need to obtain initial values for the nodes
+    node_values = sample_from_joint(graph, only_latent_vars=True)
+
+    # Set requires_grad to True for the nodes
+    for node in node_values:
+        node_values[node].requires_grad = True
+
+    # Splitting nodes into X and Y here is helpful down the road
+    X = {key: node_values[key] for key in node_values if key not in observed_nodes}
+    Y = {key: node_values[key] for key in node_values if key in observed_nodes}
+
+    # Initialize required distributions
+    mv_normal_dist = dist.MultivariateNormal(torch.zeros(M.shape[0]), M)
+    uniform_dist = dist.Uniform(0, 1)
+
+    # List containing sampled nodes
+    sampled_node_values = list()
+    sampled_node_values.append(node_values)
+
+    for s in range(S):
+
+        # Sample an R
+        R = mv_normal_dist.sample()
+
+        # Need to make a copy of X as hmc_leap_frog would make changes to the original otherwise
+        X_copy = copy.deepcopy(X)
+        R_copy = R.clone()
+
+        # Propose new R and X
+        new_X, new_R = hmc_leap_frog(graph, Y, X_copy, R_copy, T, eps)
+
+        # Calculate the acceptance rate
+        acceptance_rate = hmc_accept(graph, Y, X, R, new_X, new_R, M)
+
+        # Accept or reject new node values
+        u = uniform_dist.sample()
+        if u < acceptance_rate:
+            X = new_X
+
+        sampled_node_values.append({**X, **Y})
+
+    return sampled_node_values[1:]
+
+
+def hmc_expectation(expression, sampled_node_values):
+    """
+    Compute the posterior expectation using HMC samples
+
+    Args:
+        sampled_node_values: list of node values
+
+    Returns:
+        Posterior expectation
+    """
+
+    # List containing output expression values
+    sampled_values = list()
+    for v in sampled_node_values:
+        sample, _ = recursive_eval(expression, {}, v)
+        sampled_values.append(np.array(sample.detach()))
+
+    sampled_values = np.array(sampled_values)
+    # Ensure correct shape
+    if len(sampled_values.shape) == 1:
+        sampled_values = np.expand_dims(sampled_values, axis=1)
+
+    return np.sum(sampled_values, axis=0) / sampled_values.shape[0]
+
+
+###########################################################################################################
 
 
 # We should implement topological sort to perform ancestral sampling
@@ -98,8 +490,17 @@ def top_sort(nodes, edges):
     return sorted_nodes
 
 
-def sample_from_joint(graph):
-    "This function does ancestral sampling starting from the prior."
+def sample_from_joint(graph, only_latent_vars=False):
+    """
+    This function does ancestral sampling starting from the prior.
+
+    Args:
+        graph: graph structure as outputted by Daphne
+        only_latent_vars: Indicates whether L is returned instead of final expression values
+
+    Returns:
+        Samples from the joint
+    """
 
 
     # Extract graph dics
@@ -121,16 +522,57 @@ def sample_from_joint(graph):
         if link_funcs[node][0] == 'sample*':
             node_values[node] = evaluate_link_func(link_funcs[node][1], node_values, user_defns).sample()
         elif link_funcs[node][0] == 'observe*':
-            # For now, we treat observe in a similar fashion to sample
-            node_values[node] = evaluate_link_func(link_funcs[node][1], node_values, user_defns).sample()
+            if only_latent_vars:
+                node_values[node] = evaluate_link_func(link_funcs[node][2], node_values, user_defns)
+            else:
+                # For now, we treat observe in a similar fashion to sample
+                node_values[node] = evaluate_link_func(link_funcs[node][1], node_values, user_defns).sample()
         else:
             print('No support beyond sample and observe for random variable. Return None.')
             return None
 
-    # Evaluate the final return expression using the sampled values of random variables
-    ret_val, _ = recursive_eval(return_expression, {}, node_values)
+    if only_latent_vars:
+        return node_values
+    else:
+        # Evaluate the final return expression using the sampled values of random variables
+        ret_val, _ = recursive_eval(return_expression, {}, node_values)
 
-    return ret_val
+        return ret_val
+
+
+# Evaluator for link functions
+def evaluate_link_func(expression, local_env, user_defns):
+    """
+    Evaluates the link functions
+
+    Args:
+        user_defns: Dictionary of user definitions
+        expression: Expression to be evaluated
+        local_env: Dict containing variable bindings
+
+    Returns:
+        Expression return value
+    """
+
+    for func in user_defns.items():
+        user_funcs.update({func[0]: {'args': func[1][1], 'body': func[1][2]}})
+
+    ret, sigma = recursive_eval(expression, {}, local_env)
+
+    return ret
+
+
+def deterministic_eval(exp):
+    "Evaluation function for the deterministic target language of the graph based representation."
+    if type(exp) is list:
+        op = exp[0]
+        args = exp[1:]
+        return env[op](*map(deterministic_eval, args))
+    elif type(exp) is int or type(exp) is float:
+        # We use torch for all numerical objects in our evaluator
+        return torch.tensor(float(exp))
+    else:
+        raise("Expression type unknown.", exp)
 
 
 def get_stream(graph):
@@ -142,7 +584,6 @@ def get_stream(graph):
     while True:
         yield sample_from_joint(graph)
 
-#Testing:
 
 def run_deterministic_tests():
     
@@ -182,10 +623,23 @@ def run_probabilistic_tests():
         
 if __name__ == '__main__':
 
-    run_deterministic_tests()
-    run_probabilistic_tests()
+    # run_deterministic_tests()
+    # run_probabilistic_tests()
 
-    for i in range(1, 5):
-        graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/{}.daphne'.format(i)])
-        print('\n\n\nSample of prior of program {}:'.format(i))
-        print(sample_from_joint(graph))    
+    for i in range(1, 6):
+        graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/{}.daphne'.format(i)])
+
+        iterations = 100000
+
+        # Compute program runtime
+        t_start = time.time()
+        sampled_node_values = gibbs(graph, iterations)
+        print('It took {} seconds for sampler with {} iterations.'.format((time.time() - t_start), iterations))
+
+        print('The posterior expectation is {}. \n'.format(gibbs_expectation(graph[2], sampled_node_values)))
+
+        # t_start = time.time()
+        # sampled_node_values = hmc(graph, iterations, 10, 0.1, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
+        # print('It took {} seconds for sampler with {} iterations.'.format((time.time() - t_start), iterations))
+        #
+        # print('The posterior expectation is {}. \n'.format(hmc_expectation(graph[2], sampled_node_values)))

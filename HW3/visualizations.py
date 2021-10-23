@@ -1,7 +1,7 @@
 import numpy as np
 
-from graph_based_sampling import sample_from_joint
-from evaluation_based_sampling import evaluate_program
+from graph_based_sampling import sample_from_joint, gibbs, gibbs_expectation
+from evaluation_based_sampling import evaluate_program, compute_identity_is_expectation, compute_identity_is_variance
 from daphne import daphne
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -13,18 +13,13 @@ if __name__ == '__main__':
 
     ############################################################################
     # Program 1
-    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/1.daphne'])
-    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/1.daphne'])
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/1.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/1.daphne'])
 
-    gb_samples = list()
-    ev_samples = list()
+    # Number of iterations
+    iterations = 100000
 
-    for j in range(1000):
-        gb_samples.append(float(sample_from_joint(graph).numpy()))
-        ev_samples.append(float(evaluate_program(ast).numpy()))
 
-    print("Program 1: Marginal Expectation for Eval Based with 1000 samples = {}".format(sum(gb_samples)/1000))
-    print("Program 1: Marginal Expectation for Graph Based with 1000 samples = {} \n \n".format(sum(ev_samples)/1000))
 
     fig, axs = plt.subplots(1, 2)
 
