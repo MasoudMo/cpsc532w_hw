@@ -1,5 +1,5 @@
 import torch
-from torch.distributions import Normal, Uniform, Beta, Bernoulli, Exponential, Categorical, Gamma, Dirichlet
+from torch.distributions import Normal, Uniform, Beta, Bernoulli, Exponential, Categorical, Gamma, Dirichlet, Cauchy
 import torch.nn.functional as F
 
 
@@ -632,6 +632,8 @@ class Dirac:
         """
         self.center = a
 
+        self.dist = Cauchy(a, 0.001)
+
     def sample(self):
         """
         sample method
@@ -652,10 +654,7 @@ class Dirac:
             1 if b is equal to center, 0 otherwise
         """
 
-        if self.center == b:
-            return torch.log(torch.tensor(1))
-        else:
-            return torch.tensor(-float('Inf'))
+        return self.dist.log_prob(b)
 
 
 def matadd(a, b):

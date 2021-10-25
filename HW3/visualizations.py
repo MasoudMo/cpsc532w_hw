@@ -2,7 +2,7 @@ import numpy as np
 
 from graph_based_sampling import gibbs, extract_output_samples, extract_joint_log_prob, hmc
 from evaluation_based_sampling import evaluate_likelihood_weighting, compute_identity_is_variance, \
-    compute_identity_is_expectation
+    compute_identity_is_expectation, compute_identity_is_dual_covariance
 from daphne import daphne
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/1.daphne'])
 
     # Number of iterations
-    iterations = 900000
+    iterations = 2000000
 
     # Perfrom IS likelihood sampling
     t_start = time.time()
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     plt.ylabel('Frequency')
 
     # Perfrom Gibbs Sampling
-    iterations = 800000
+    iterations = 500000
     t_start = time.time()
     sampled_node_values = gibbs(graph, iterations)
     print('Program 1 Gibbs sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
@@ -77,9 +77,9 @@ if __name__ == '__main__':
     plt.ylabel('Joint Probability')
 
     # Perfrom HMC Sampling
-    iterations = 300000
+    iterations = 60000
     t_start = time.time()
-    sampled_node_values = hmc(graph, iterations, 10, 0.1, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
+    sampled_node_values = hmc(graph, iterations, 12, 0.11, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
     print('Program 1 HMC sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
 
     # Compute its variance and mean
@@ -113,201 +113,371 @@ if __name__ == '__main__':
     ############################################################################
 
     # ############################################################################
-    # # Program 2
-    # graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/2.daphne'])
-    # ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/2.daphne'])
+    # Program 2
+
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/2.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/2.daphne'])
+
+    # Number of iterations
+    iterations = 550000
+
+    # Perfrom IS likelihood sampling
+    t_start = time.time()
+    weighted_samples = evaluate_likelihood_weighting(ast, iterations)
+    print('Program 2 IS sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    weighted_samples_0 = np.array([(weighted_sample[0][0], weighted_sample[1]) for weighted_sample in weighted_samples])
+    weighted_samples_1 = np.array([(weighted_sample[0][1], weighted_sample[1]) for weighted_sample in weighted_samples])
+    mean = compute_identity_is_expectation(weighted_samples)
+    cov = compute_identity_is_dual_covariance(weighted_samples, mean)
+    plt.figure(7)
+    sns.heatmap(cov[:, :, 0], annot=True, fmt='g')
+    print('Program 2 IS sampler: The posterior means for slope and bias are {}'.format(mean))
+
+    # Plot the histograms
+    samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples])
+    log_weights = np.array([weighted_sample[1] for weighted_sample in weighted_samples])
+    weights = np.exp(log_weights)
+
+    plt.figure(8)
+    plt.title('Program 2 - Importance Sampling - Histogram - Slope')
+    plt.hist(samples[:, 0], bins=60, weights=weights)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.figure(9)
+    plt.title('Program 2 - Importance Sampling - Histogram - Bias')
+    plt.hist(samples[:, 1], bins=60, weights=weights)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Perfrom Gibbs Sampling
+    iterations = 100000
+    t_start = time.time()
+    sampled_node_values = gibbs(graph, iterations)
+    print('Program 2 Gibbs sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    samples = extract_output_samples(graph[2], sampled_node_values)
+    cov = np.cov(samples.detach().numpy(), rowvar=False)
+    plt.figure(10)
+    sns.heatmap(cov, annot=True, fmt='g')
+    print('Program 2 Gibbs sampler: The posterior means for slope and bias are {}'.format(samples.mean(dim=0)))
+
+    # Plot the histograms
+    plt.figure(11)
+    plt.title('Program 2 - Gibbs Sampling - Histogram - Slope')
+    plt.hist(samples.detach().numpy()[:, 0], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.figure(12)
+    plt.title('Program 2 - Gibbs Sampling - Histogram - Bias')
+    plt.hist(samples.detach().numpy()[:, 1], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Plot the traces
+    plt.figure(13)
+    plt.title('Program 2 - Gibbs Sampling - Trace - Slope')
+    plt.plot(range(len(samples)), np.array(samples)[:, 0])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    plt.figure(14)
+    plt.title('Program 2 - Gibbs Sampling - Trace - Bias')
+    plt.plot(range(len(samples)), np.array(samples)[:, 1])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    # Plot the joint log probs
+    joint_log_probs = extract_joint_log_prob(graph, sampled_node_values)
+    plt.figure(15)
+    plt.title('Program 2 - Gibbs Sampling - Joint Probs')
+    plt.plot(range(len(joint_log_probs)), joint_log_probs)
+    plt.xlabel('Iteration')
+    plt.ylabel('Joint Probability')
+
+    # Perfrom HMC Sampling
+    iterations = 25000
+    t_start = time.time()
+    sampled_node_values = hmc(graph, iterations, 12, 0.11, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
+    print('Program 2 HMC sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    samples = extract_output_samples(graph[2], sampled_node_values)
+    cov = np.cov(samples.detach().numpy(), rowvar=False)
+    plt.figure(16)
+    sns.heatmap(cov, annot=True, fmt='g')
+    print('Program 2 HMC sampler: The posterior means for slope and bias are {}'.format(samples.mean(dim=0)))
+
+    # Plot the histograms
+    plt.figure(17)
+    plt.title('Program 2 - HMC Sampling - Histogram - Slope')
+    plt.hist(samples.detach().numpy()[:, 0], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.figure(18)
+    plt.title('Program 2 - HMC Sampling - Histogram - Bias')
+    plt.hist(samples.detach().numpy()[:, 1], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Plot the traces
+    plt.figure(19)
+    plt.title('Program 2 - HMC Sampling - Trace - Slope')
+    plt.plot(range(len(samples)), samples.detach().numpy()[:, 0])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    plt.figure(20)
+    plt.title('Program 2 - HMC Sampling - Trace - Bias')
+    plt.plot(range(len(samples)), samples.detach().numpy()[:, 1])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    # Plot the joint log probs
+    joint_log_probs = extract_joint_log_prob(graph, sampled_node_values)
+    plt.figure(21)
+    plt.title('Program 2 - HMC Sampling - Joint Probs')
+    plt.plot(range(len(joint_log_probs)), joint_log_probs)
+    plt.xlabel('Iteration')
+    plt.ylabel('Joint Probability')
+
+    plt.show()
+
+    # # ############################################################################
+    # Program 3
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/3.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/3.daphne'])
+
+    # Number of iterations
+    iterations = 300000
+
+    # Perfrom IS likelihood sampling
+    t_start = time.time()
+    weighted_samples = evaluate_likelihood_weighting(ast, iterations)
+    print('Program 3 IS sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    mean = compute_identity_is_expectation(weighted_samples)
+    variance = compute_identity_is_variance(weighted_samples, mean)
+    print('Program 3 IS sampler: The posterior mean is {}'.format(mean))
+    print('Program 3 IS sampler: The variance is {}'.format(variance))
+
+    # Plot the histogram
+    plt.figure(22)
+    plt.title('Program 3 - Importance Sampling - Histogram')
+    samples = np.array([weighted_sample[0] for weighted_sample in weighted_samples]) * 1.0
+    log_weights = np.array([weighted_sample[1] for weighted_sample in weighted_samples])
+    weights = np.exp(log_weights)
+    plt.hist(samples, bins=60, weights=weights)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Perfrom Gibbs Sampling
+    iterations = 16000
+    t_start = time.time()
+    sampled_node_values = gibbs(graph, iterations)
+    print('Program 3 Gibbs sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    samples = extract_output_samples(graph[2], sampled_node_values) * 1.0
+    print('Program 3 Gibbs sampler: The posterior mean is {}'.format(samples.mean()))
+    print('Program 3 Gibbs sampler: The variance is {}'.format(samples.std() ** 2))
+
+    # Plot the histogram
+    plt.figure(23)
+    plt.title('Program 3 - Gibbs Sampling - Histogram')
+    plt.hist(samples.detach().numpy(), bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
     #
-    # gb_samples = np.zeros((2, 1000))
-    # ev_samples = np.zeros((2, 1000))
-    #
-    # for j in range(1000):
-    #     gb_samples[:, j] = sample_from_joint(graph).numpy()
-    #     ev_samples[:, j] = evaluate_program(ast).numpy()
-    #
-    # print("Program 2: Marginal Expectation for dim 0 for Graph Based with 1000 samples = {}".format(np.sum(
-    #     gb_samples[0, :]) / 1000))
-    #
-    # print("Program 2: Marginal Expectation for dim 1 for Graph Based with 1000 samples = {}".format(np.sum(
-    #     gb_samples[1, :]) / 1000))
-    #
-    # print("Program 2: Marginal Expectation for dim 0 for Eval Based with 1000 samples = {}".format(np.sum(
-    #     ev_samples[0, :]) / 1000))
-    #
-    # print("Program 2: Marginal Expectation for dim 1 for Eval Based with 1000 samples = {}".format(np.sum(
-    #     ev_samples[1, :]) / 1000))
-    #
-    # fig, axs = plt.subplots(2, 2)
-    #
-    # for dim in range(2):
-    #
-    #     print("Program 2: Marginal Expectation for dim {} for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_samples[dim, :]) / 1000))
-    #
-    #     print("Program 2: Marginal Expectation for dim {} for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_samples[dim, :]) / 1000))
-    #
-    #     axs[0, dim].hist(gb_samples[dim, :], bins=20)
-    #     axs[0, dim].set_title('1000 Graph Based Samples Dim {}'.format(dim))
-    #     axs[0, dim].set_xlabel('Sample Value Bins')
-    #     axs[0, dim].set_ylabel('Frequency')
-    #
-    #     axs[1, dim].hist(ev_samples[dim, :], bins=20)
-    #     axs[1, dim].set_title('1000 Eval Based Samples Dim {}'.format(dim))
-    #     axs[1, dim].set_xlabel('Sample Value Bins')
-    #     axs[1, dim].set_ylabel('Frequency')
-    #
-    # plt.show()
-    #
+    plt.show()
+
     # ############################################################################
-    # # Program 3
-    # graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/3.daphne'])
-    # ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/3.daphne'])
-    #
-    # gb_samples = np.zeros((17, 1000))
-    # ev_samples = np.zeros((17, 1000))
-    #
-    # for j in range(1000):
-    #     gb_samples[:, j] = sample_from_joint(graph).numpy()
-    #     ev_samples[:, j] = evaluate_program(ast).numpy()
-    #
-    # fig0, axs0 = plt.subplots(5, 4)
-    # fig1, axs1 = plt.subplots(5, 4)
-    # fig0.tight_layout(pad=0.5)
-    # fig1.tight_layout(pad=0.5)
-    #
-    # for dim in range(17):
-    #
-    #     print("Program 3: Marginal Expectation for dim {} for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_samples[dim, :]) / 1000))
-    #
-    #     print("Program 3: Marginal Expectation for dim {} for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_samples[dim, :]) / 1000))
-    #
-    #     axs0[int(dim / 4), int(dim % 4)].hist(gb_samples[dim, :], bins=20)
-    #     axs0[int(dim / 4), int(dim % 4)].set_title('1000 Graph Based Samples Dim {}'.format(dim), fontsize=10)
-    #     axs0[int(dim / 4), int(dim % 4)].set_xlabel('Sample Value Bins')
-    #     axs0[int(dim / 4), int(dim % 4)].set_ylabel('Frequency')
-    #
-    #     axs1[int(dim / 4), int(dim % 4)].hist(ev_samples[dim, :], bins=20)
-    #     axs1[int(dim / 4), int(dim % 4)].set_title('1000 Eval Based Samples Dim {}'.format(dim), fontsize=10)
-    #     axs1[int(dim / 4), int(dim % 4)].set_xlabel('Sample Value Bins')
-    #     axs1[int(dim / 4), int(dim % 4)].set_ylabel('Frequency')
-    #
-    # fig0.delaxes(axs0[4, 1])
-    # fig1.delaxes(axs1[4, 1])
-    # fig0.delaxes(axs0[4, 2])
-    # fig1.delaxes(axs1[4, 2])
-    # fig0.delaxes(axs0[4, 3])
-    # fig1.delaxes(axs1[4, 3])
-    #
-    # plt.show()
-    #
-    # ############################################################################
-    # # Program 4
-    # graph = daphne(['graph', '-i', '../cpsc532w_hw/HW2/programs/4.daphne'])
-    # ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW2/programs/4.daphne'])
-    #
-    # gb_w0 = np.zeros((10, 1000))
-    # gb_b0 = np.zeros((10, 1000))
-    # gb_w1 = np.zeros((10, 10, 1000))
-    # gb_b1 = np.zeros((10, 1000))
-    #
-    # ev_w0 = np.zeros((10, 1000))
-    # ev_b0 = np.zeros((10, 1000))
-    # ev_w1 = np.zeros((10, 10, 1000))
-    # ev_b1 = np.zeros((10, 1000))
-    #
-    # for j in range(1000):
-    #     ev_w0[:, j] = evaluate_program(ast)[0].numpy().squeeze()
-    #     ev_b0[:, j] = evaluate_program(ast)[1].numpy().squeeze()
-    #     ev_w1[:, :, j] = evaluate_program(ast)[2].numpy()
-    #     ev_b1[:, j] = evaluate_program(ast)[3].numpy().squeeze()
-    #
-    #     gb_w0[:, j] = sample_from_joint(graph)[0].numpy().squeeze()
-    #     gb_b0[:, j] = sample_from_joint(graph)[1].numpy().squeeze()
-    #     gb_w1[:, :, j] = sample_from_joint(graph)[2].numpy()
-    #     gb_b1[:, j] = sample_from_joint(graph)[3].numpy().squeeze()
-    #
-    # # Plot W1 stats
-    # ev_w1_mean = np.mean(ev_w1, axis=2)
-    # gb_w1_mean = np.mean(gb_w1, axis=2)
-    #
-    # ev_w1_std = np.std(ev_w1, axis=2)
-    # gb_w1_std = np.std(gb_w1, axis=2)
-    #
-    # ax0 = plt.axes()
-    # sns.heatmap(gb_w1_mean, ax=ax0, annot=True)
-    # ax0.set_title('W1 Mean for Graph Based Sampling')
-    #
-    # ax1 = plt.axes()
-    # sns.heatmap(gb_w1_std, ax=ax1, annot=True)
-    # ax1.set_title('W1 STD for Graph Based Sampling')
-    #
-    # ax2 = plt.axes()
-    # sns.heatmap(ev_w1_mean, ax=ax2, annot=True)
-    # ax2.set_title('W1 Mean for Eval Based Sampling')
-    #
-    # ax3 = plt.axes()
-    # sns.heatmap(ev_w1_std, ax=ax3, annot=True)
-    # ax3.set_title('W1 STD for Eval Based Sampling')
-    #
-    # # Plot the rest
-    # fig0, axs0 = plt.subplots(2, 5)
-    # fig1, axs1 = plt.subplots(2, 5)
-    # fig2, axs2 = plt.subplots(2, 5)
-    # fig3, axs3 = plt.subplots(2, 5)
-    # fig4, axs4 = plt.subplots(2, 5)
-    # fig5, axs5 = plt.subplots(2, 5)
-    # fig0.tight_layout(pad=0.5)
-    # fig1.tight_layout(pad=0.5)
-    # fig2.tight_layout(pad=0.5)
-    # fig3.tight_layout(pad=0.5)
-    # fig4.tight_layout(pad=0.5)
-    # fig5.tight_layout(pad=0.5)
-    #
-    # for dim in range(10):
-    #
-    #     print("Program 4: Marginal Expectation for dim {} of w0 for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_w0[dim, :]) / 1000))
-    #
-    #     print("Program 4: Marginal Expectation for dim {} of b0 for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_b0[dim, :]) / 1000))
-    #
-    #     print("Program 4: Marginal Expectation for dim {} of b1 for Graph Based with 1000 samples = {}".format(dim, np.sum(
-    #         gb_b1[dim, :]) / 1000))
-    #
-    #     print("Program 4: Marginal Expectation for dim {} of w0 for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_w0[dim, :]) / 1000))
-    #
-    #     print("Program 4: Marginal Expectation for dim {} of b0 for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_b0[dim, :]) / 1000))
-    #
-    #     print("Program 4: Marginal Expectation for dim {} of b1 for Eval Based with 1000 samples = {}".format(dim, np.sum(
-    #         ev_b1[dim, :]) / 1000))
-    #
-    #     axs0[int(dim / 5), int(dim % 5)].hist(gb_w0[dim, :], bins=20)
-    #     axs0[int(dim / 5), int(dim % 5)].set_title('1000 Graph Based Samples Dim {} of W0'.format(dim), fontsize=10)
-    #     axs0[int(dim / 5), int(dim % 5)].set_xlabel('Sample Value Bins')
-    #     axs0[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
-    #     axs1[int(dim / 5), int(dim % 5)].hist(ev_w0[dim, :], bins=20)
-    #     axs1[int(dim / 5), int(dim % 5)].set_title('1000 Eval Based Samples Dim {} of W0'.format(dim), fontsize=10)
-    #     axs1[int(dim / 5), int(dim % 5)].set_xlabel('Sample Value Bins')
-    #     axs1[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
-    #     axs2[int(dim / 5), int(dim % 5)].hist(gb_b0[dim, :], bins=20)
-    #     axs2[int(dim / 5), int(dim % 5)].set_title('1000 Graph Based Samples Dim {} of b0'.format(dim), fontsize=10)
-    #     axs2[int(dim / 5), int(dim % 5)].set_xlabel('Sample Value Bins')
-    #     axs2[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
-    #     axs3[int(dim / 5), int(dim % 5)].hist(ev_b0[dim, :], bins=20)
-    #     axs3[int(dim / 5), int(dim % 5)].set_title('1000 Eval Based Samples Dim {} of b0'.format(dim), fontsize=10)
-    #     axs3[int(dim / 5), int(dim % 5)].set_xlabel('Sample Value Bins')
-    #     axs3[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
-    #     axs4[int(dim / 5), int(dim % 5)].hist(gb_b1[dim, :], bins=20)
-    #     axs4[int(dim / 5), int(dim % 5)].set_title('1000 Graph Based Samples Dim {} of b1'.format(dim), fontsize=10)
-    #     axs4[int(dim / 5), int(dim % 5)].set_xlabel('Sample Value Bins')
-    #     axs4[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
-    #     axs5[int(dim / 5), int(dim % 5)].hist(ev_b1[dim, :], bins=20)
-    #     axs5[int(dim / 5), int(dim % 5)].set_title('1000 Eval Based Samples Dim {} of b1'.format(dim), fontsize=10)
-    #     axs5[int(dim / 5), int(dim % 5)].set_xlabel('Sample Value Bins')
-    #     axs5[int(dim / 5), int(dim % 5)].set_ylabel('Frequency')
-    #
-    # plt.show()
+    # Program 4
+
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/4.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/4.daphne'])
+
+    # Number of iterations
+    iterations = 1000000
+
+    # Perfrom IS likelihood sampling
+    t_start = time.time()
+    weighted_samples = evaluate_likelihood_weighting(ast, iterations)
+    print('Program 4 IS sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    mean = compute_identity_is_expectation(weighted_samples)
+    variance = compute_identity_is_variance(weighted_samples, mean)
+    print('Program 4 IS sampler: The posterior mean is {}'.format(mean))
+    print('Program 4 IS sampler: The variance is {}'.format(variance))
+
+    # Plot the histogram
+    plt.figure(24)
+    plt.title('Program 4 - Importance Sampling - Histogram')
+    samples = np.array([weighted_sample[0] for weighted_sample in weighted_samples])
+    log_weights = np.array([weighted_sample[1] for weighted_sample in weighted_samples])
+    weights = np.exp(log_weights)
+    plt.hist(samples, bins=60, weights=weights)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Perfrom Gibbs Sampling
+    iterations = 150000
+    t_start = time.time()
+    sampled_node_values = gibbs(graph, iterations)
+    print('Program 4 Gibbs sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    samples = extract_output_samples(graph[2], sampled_node_values) * 1.0
+    print('Program 4 Gibbs sampler: The posterior mean is {}'.format(samples.mean()))
+    print('Program 4 Gibbs sampler: The variance is {}'.format(samples.std() ** 2))
+
+    # Plot the histogram
+    plt.figure(25)
+    plt.title('Program 4 - Gibbs Sampling - Histogram')
+    plt.hist(samples.detach().numpy(), bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.show()
+
+    ############################################################################
+    # Program 2
+
+    graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/5.daphne'])
+    ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/5.daphne'])
+
+    # Number of iterations
+    iterations = 1000000
+
+    # Perfrom IS likelihood sampling
+    t_start = time.time()
+    weighted_samples = evaluate_likelihood_weighting(ast, iterations)
+    print('Program 5 IS sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    weighted_samples_0 = np.array([(weighted_sample[0][0], weighted_sample[1]) for weighted_sample in weighted_samples])
+    weighted_samples_1 = np.array([(weighted_sample[0][1], weighted_sample[1]) for weighted_sample in weighted_samples])
+    mean = compute_identity_is_expectation(weighted_samples)
+    var0 = compute_identity_is_variance(weighted_samples_0, mean[0])
+    var1 = compute_identity_is_variance(weighted_samples_1, mean[1])
+    print('Program 5 IS sampler: The posterior means for x and y are {}'.format(mean))
+    print('Program 5 IS sampler: The variance for x and y is: {}, {}'.format(var0, var1))
+
+    # Plot the histograms
+    samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples])
+    log_weights = np.array([weighted_sample[1] for weighted_sample in weighted_samples])
+    weights = np.exp(log_weights)
+
+    plt.figure(26)
+    plt.title('Program 5 - Importance Sampling - Histogram - X')
+    plt.hist(samples[:, 0], bins=60, weights=weights)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.figure(27)
+    plt.title('Program 5 - Importance Sampling - Histogram - Y')
+    plt.hist(samples[:, 1], bins=60, weights=weights)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Perfrom Gibbs Sampling
+    iterations = 500000
+    t_start = time.time()
+    sampled_node_values = gibbs(graph, iterations)
+    print('Program 5 Gibbs sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    samples = extract_output_samples(graph[2], sampled_node_values)
+    print('Program 5 Gibbs sampler: The posterior means for x and y are {}'.format(samples.mean(dim=0)))
+    print('Program 5 Gibbs sampler: The posterior variances for x and y are {}'.format(samples.std(dim=0) ** 2))
+
+    # Plot the histograms
+    plt.figure(28)
+    plt.title('Program 5 - Gibbs Sampling - Histogram - X')
+    plt.hist(samples.detach().numpy()[:, 0], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.figure(29)
+    plt.title('Program 5 - Gibbs Sampling - Histogram - Y')
+    plt.hist(samples.detach().numpy()[:, 1], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Plot the traces
+    plt.figure(30)
+    plt.title('Program 2 - Gibbs Sampling - Trace - X')
+    plt.plot(range(len(samples)), np.array(samples)[:, 0])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    plt.figure(31)
+    plt.title('Program 2 - Gibbs Sampling - Trace - Y')
+    plt.plot(range(len(samples)), np.array(samples)[:, 1])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    # Plot the joint log probs
+    joint_log_probs = extract_joint_log_prob(graph, sampled_node_values)
+    plt.figure(32)
+    plt.title('Program 5 - Gibbs Sampling - Joint Probs')
+    plt.plot(range(len(joint_log_probs)), joint_log_probs)
+    plt.xlabel('Iteration')
+    plt.ylabel('Joint Probability')
+
+    # Perfrom HMC Sampling
+    iterations = 200000
+    t_start = time.time()
+    sampled_node_values = hmc(graph, iterations, 5, 0.05, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
+    print('Program 5 HMC sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
+
+    # Compute its variance and mean
+    samples = extract_output_samples(graph[2], sampled_node_values)
+    print('Program 5 HMC sampler: The posterior means for x and y are {}'.format(samples.mean(dim=0).detach().numpy()))
+    print('Program 5 HMC sampler: The posterior variances for x and y are {}'.format(samples.std(dim=0).detach().numpy() ** 2))
+
+    # Plot the histograms
+    plt.figure(33)
+    plt.title('Program 5 - HMC Sampling - Histogram - X')
+    plt.hist(samples.detach().numpy()[:, 0], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    plt.figure(34)
+    plt.title('Program 5 - HMC Sampling - Histogram - Y')
+    plt.hist(samples.detach().numpy()[:, 1], bins=60)
+    plt.xlabel('Sample Value Bins')
+    plt.ylabel('Frequency')
+
+    # Plot the traces
+    plt.figure(35)
+    plt.title('Program 5 - HMC Sampling - Trace - X')
+    plt.plot(range(len(samples)), samples.detach().numpy()[:, 0])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    plt.figure(36)
+    plt.title('Program 2 - HMC Sampling - Trace - Y')
+    plt.plot(range(len(samples)), samples.detach().numpy()[:, 1])
+    plt.xlabel('Iteration')
+    plt.ylabel('Output Value')
+
+    # Plot the joint log probs
+    joint_log_probs = extract_joint_log_prob(graph, sampled_node_values)
+    plt.figure(37)
+    plt.title('Program 5 - HMC Sampling - Joint Probs')
+    plt.plot(range(len(joint_log_probs)), joint_log_probs)
+    plt.xlabel('Iteration')
+    plt.ylabel('Joint Probability')
+
+    plt.show()
+
+    ############################################################################
+

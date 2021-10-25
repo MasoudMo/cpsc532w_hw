@@ -142,7 +142,7 @@ def gibbs_step(graph, node_values, mk_blankets):
             d = evaluate_link_func(link_funcs[x][1], node_values, user_defns)
 
             # Copy current node values and replace the newly sampled one
-            new_node_values = node_values.copy()
+            new_node_values = copy.deepcopy(node_values)
             new_node_values[x] = d.sample()
 
             # Determine the acceptance ratio
@@ -576,7 +576,7 @@ def extract_joint_log_prob(graph, sampled_node_values):
 
         log_probs.append(log_prob.item())
 
-    return np.exp(np.array(log_probs))
+    return np.array(log_probs)
 
 
 def deterministic_eval(exp):
@@ -643,20 +643,22 @@ if __name__ == '__main__':
     # run_deterministic_tests()
     # run_probabilistic_tests()
 
-    for i in range(1, 6):
+    for i in range(5, 6):
         graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/{}.daphne'.format(i)])
 
-        iterations = 10000
+        iterations = 1000
 
         # Compute program runtime
         # t_start = time.time()
         # sampled_node_values = gibbs(graph, iterations)
         # print('It took {} seconds for sampler with {} iterations.'.format((time.time() - t_start), iterations))
         #
-        # print('The posterior expectation is {}. \n'.format(gibbs_expectation_variance(graph[2], sampled_node_values)))
+        # samples = extract_output_samples(graph[2], sampled_node_values)
+        #
+        # print('The posterior expectation is {}. \n'.format(samples.mean(dim=0)))
 
         # t_start = time.time()
-        # sampled_node_values = hmc(graph, iterations, 10, 0.1, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
+        # sampled_node_values = hmc(graph, iterations, 12, 0.11, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
         # print('It took {} seconds for sampler with {} iterations.'.format((time.time() - t_start), iterations))
-        #
-        # print('The posterior expectation is {}. \n'.format(hmc_expectation(graph[2], sampled_node_values)))
+        # samples = extract_output_samples(graph[2], sampled_node_values)
+        # print('The posterior expectation is {}. \n'.format(samples.detach().mean(dim=1)))

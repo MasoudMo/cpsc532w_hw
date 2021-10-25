@@ -47,14 +47,12 @@ def evaluate_likelihood_weighting(ast, num_iters):
         user_funcs.update({ast[idx][1]: {'args': ast[idx][2], 'body': ast[idx][3]}})
         idx += 1
 
-    # List containing output sample and weight tuples
-    samples = list()
-
+    weighted_samples = list()
     for l in range(num_iters):
-        ret, sigma = recursive_eval(ast[idx], {'logW': 0}, {})
-        samples.append((ret, sigma['logW']))
+        ret, sigma = recursive_eval(ast[idx], {'logW': 0.0}, {})
+        weighted_samples.append((ret, sigma['logW']))
 
-    return samples
+    return weighted_samples
 
 
 def compute_identity_is_expectation(weighted_samples):
@@ -69,7 +67,7 @@ def compute_identity_is_expectation(weighted_samples):
     """
 
     # Extract the samples
-    samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples])
+    samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples]) * 1.0
 
     # Ensure correct shape for multiplication with W
     if len(samples.shape) == 1:
@@ -86,18 +84,18 @@ def compute_identity_is_expectation(weighted_samples):
 
 def compute_identity_is_variance(weighted_samples, mean):
     """
-    Computes posterior expection for identity function
+    Computes posterior variance for identity function
 
     Args:
         weighted_samples: list of tuples of sample and weight pairs
         mean: mean of samples
 
     Returns:
-        Expectation of posterior for identity function
+        Variance of posterior for identity function
     """
 
     # Extract the samples
-    samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples])
+    samples = np.array([np.array(weighted_sample[0]) for weighted_sample in weighted_samples]) * 1.0
 
     # Ensure correct shape for multiplication with W
     if len(samples.shape) == 1:
@@ -109,7 +107,39 @@ def compute_identity_is_variance(weighted_samples, mean):
     weights = np.expand_dims(weights, axis=1)
 
     # Perform weighted average
-    return np.sum(((samples ** 2 - mean ** 2) * weights) / np.sum(weights), axis=0)
+    return np.sum(((samples - mean)**2 * weights) / np.sum(weights), axis=0)
+
+
+def compute_identity_is_dual_covariance(weighted_samples, mean):
+    """
+    Computes posterior co-variance for identity function
+
+    Args:
+        weighted_samples: list of tuples of sample and weight pairs
+        mean: mean of samples
+
+    Returns:
+        Covariance of posterior for identity function
+    """
+
+    # Extract the samples
+    samples_0 = np.array([np.array(weighted_sample[0][0]) for weighted_sample in weighted_samples])
+    samples_1 = np.array([np.array(weighted_sample[0][1]) for weighted_sample in weighted_samples])
+
+    samples_0 = np.expand_dims(samples_0, axis=1)
+    samples_1 = np.expand_dims(samples_1, axis=1)
+
+    # Obtain log weights and exp them to obtain actual weights
+    log_weights = np.array([weighted_sample[1] for weighted_sample in weighted_samples])
+    weights = np.exp(log_weights)
+    weights = np.expand_dims(weights, axis=1)
+
+    variance00 = np.sum(((samples_0 - mean[0])**2 * weights) / np.sum(weights), axis=0)
+    variance11 = np.sum(((samples_1 - mean[1])**2 * weights) / np.sum(weights), axis=0)
+    variance01 = np.sum(((samples_0 - mean[0]) * (samples_1 - mean[1]) * weights) / np.sum(weights), axis=0)
+
+    # Perform weighted average
+    return np.array([[variance00, variance01], [variance01, variance11]])
 
 
 def recursive_eval(e, sigma, l):
@@ -175,11 +205,8 @@ def recursive_eval(e, sigma, l):
         # Evaluate e2 to a constant, which is the observed value of y
         c, sigma = recursive_eval(e[2], sigma, l)
 
-        # This trick would ensure that true/false values are changed into 0 and 1
-        c = c * 1.0
-
         # Aggregate the log probability of c under d into logW
-        sigma['logW'] += d.log_prob(c)
+        sigma['logW'] += d.log_prob(c * 1.0)
 
         return c, sigma
 
@@ -273,13 +300,13 @@ if __name__ == '__main__':
     #
     # run_probabilistic_tests()
 
-    for i in range(2, 5):
+    for i in range(5, 6):
         ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/{}.daphne'.format(i)])
 
         # Compute program runtime
         t_start = time.time()
 
-        iterations = 10000
+        iterations = 100000
 
         weighted_samples = evaluate_likelihood_weighting(ast, iterations)
 
@@ -288,3 +315,4 @@ if __name__ == '__main__':
         posterior_expectation = compute_identity_is_expectation(weighted_samples)
         variance = compute_identity_is_variance(weighted_samples, posterior_expectation)
         print('The posterior expectation is {}. \n'.format(posterior_expectation))
+        print('The posterior variance is {}. \n'.format(variance))
