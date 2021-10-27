@@ -187,7 +187,174 @@ def gibbs(graph, num_iterations):
 
     return sampled_node_values[1:]
 
+
 ###########################################################################################################
+
+###############################Hacky Block Sampler for Program 5###########################################
+
+def gibbs_step_program_5(graph, node_values, mk_blankets):
+    """
+    Performs one step of Gibbs sampling for program 5
+    This is a hacky solution that only works for program 5.
+
+    Args:
+        graph: Graph structure as obtained from Daphne
+        node_values: Node values dictionary
+
+    Returns:
+        New node values in the graph after Gibbs step
+    """
+
+    user_defns = graph[0]
+    nodes = graph[1]['V']
+    link_funcs = graph[1]['P']
+
+    uniform_dist = dist.Uniform(0, 1)
+
+    # Get the proposed distribution from prior
+    d_x = evaluate_link_func(link_funcs[nodes[1]][1], node_values, user_defns)
+    d_y = evaluate_link_func(link_funcs[nodes[2]][1], node_values, user_defns)
+
+    # Copy current node values and replace the newly sampled one
+    new_node_values = copy.deepcopy(node_values)
+    new_node_values[nodes[1]] = d_x.sample()
+    new_node_values[nodes[2]] = d_y.sample()
+
+    # Determine the acceptance ratio
+    acceptance_ratio_x = gibbs_accept(graph, node_values, new_node_values, nodes[1], mk_blankets[nodes[1]])
+    acceptance_ratio_y = gibbs_accept(graph, node_values, new_node_values, nodes[2], mk_blankets[nodes[2]])
+
+    # Sample from uniform
+    u = uniform_dist.sample()
+
+    # Reject or accept sample
+    if u < acceptance_ratio_x and u < acceptance_ratio_y:
+        node_values = new_node_values
+
+    return node_values
+
+
+def gibbs_accept_program_5(graph, node_values, new_node_values, x):
+    """
+    Compute the acceptance ratio
+
+    Args:
+        graph: Graph structure as obtained from Daphne
+        node_values: Old node values dict
+        new_node_values: New node values dict
+        x: The node to evaluate acceptance ratio for
+
+    Returns:
+        Acceptance ratio
+    """
+
+    user_defns = graph[0]
+    link_funcs = graph[1]['P']
+
+    log_alpha = torch.tensor(0.0)
+
+    log_alpha += evaluate_link_func(link_funcs[x][1], new_node_values,
+                                    user_defns).log_prob(new_node_values[x] * 1.0)
+    log_alpha -= evaluate_link_func(link_funcs[x][1], node_values,
+                                    user_defns).log_prob(node_values[x] * 1.0)
+
+    return torch.exp(log_alpha)
+
+
+def gibbs_step_program_5_v2(graph, node_values):
+    """
+    Performs one step of Gibbs sampling for program 5
+    This is a hacky solution that only works for program 5.
+
+    Args:
+        graph: Graph structure as obtained from Daphne
+        node_values: Node values dictionary
+
+    Returns:
+        New node values in the graph after Gibbs step
+    """
+
+    user_defns = graph[0]
+    nodes = graph[1]['V']
+    link_funcs = graph[1]['P']
+
+    uniform_dist = dist.Uniform(0, 1)
+
+    # Get the proposed distribution from prior
+    d_x = evaluate_link_func(link_funcs[nodes[1]][1], node_values, user_defns)
+
+    # Copy current node values and replace the newly sampled one
+    new_node_values = copy.deepcopy(node_values)
+    new_node_values[nodes[1]] = d_x.sample()
+    new_node_values[nodes[2]] = 7.0 - new_node_values[nodes[1]]
+
+    # Determine the acceptance ratio
+    acceptance_ratio = gibbs_accept_program_5(graph, node_values, new_node_values, nodes[2])
+
+    # Sample from uniform
+    u = uniform_dist.sample()
+
+    # Reject or accept sample
+    if u < acceptance_ratio:
+        node_values = new_node_values
+
+    return node_values
+
+
+def gibbs_program_5(graph, num_iterations):
+    """
+    Performs Gibbs sampling
+
+    Args:
+        graph: Graph structure as obtained form Daphne
+        num_iterations: Number of Gibbs sampling iterations
+
+    Returns:
+        Samples
+    """
+
+    # Compute the markov blanket for all latent variables (this is done here to save computation time)
+    # Alternatively, this markov blanket could be computed each time in gibbs_accept
+    mk_blankets = markov_blanket(graph)
+
+    # Need to obtain initial values for latent variables (X[0])
+    node_values = sample_from_joint(graph, only_latent_vars=True)
+
+    # list holding sample values
+    sampled_node_values = list()
+    sampled_node_values.append(node_values)
+
+    # Obtain node values for multiple iterations of Gibbs
+    for s in range(num_iterations):
+        sampled_node_values.append(gibbs_step_program_5(graph, sampled_node_values[-1], mk_blankets))
+
+    return sampled_node_values[1:]
+
+
+def gibbs_program_5_v2(graph, num_iterations):
+    """
+    Performs Gibbs sampling
+
+    Args:
+        graph: Graph structure as obtained form Daphne
+        num_iterations: Number of Gibbs sampling iterations
+
+    Returns:
+        Samples
+    """
+
+    # Need to obtain initial values for latent variables (X[0])
+    node_values = sample_from_joint(graph, only_latent_vars=True)
+
+    # list holding sample values
+    sampled_node_values = list()
+    sampled_node_values.append(node_values)
+
+    # Obtain node values for multiple iterations of Gibbs
+    for s in range(num_iterations):
+        sampled_node_values.append(gibbs_step_program_5_v2(graph, sampled_node_values[-1]))
+
+    return sampled_node_values[1:]
 
 ################################################## HMC ####################################################
 

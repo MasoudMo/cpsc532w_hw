@@ -618,7 +618,7 @@ def matmul(a, b):
     return torch.matmul(a, b)
 
 
-class Dirac:
+class Dirac_approx:
     """
     An implementation for dirac distribution
     """
@@ -632,7 +632,7 @@ class Dirac:
         """
         self.center = a
 
-        self.dist = Cauchy(a, 0.001)
+        self.dist = Cauchy(a, 0.1)
 
     def sample(self):
         """
@@ -656,6 +656,45 @@ class Dirac:
 
         return self.dist.log_prob(b)
 
+
+class Dirac:
+    """
+    An implementation for dirac distribution
+    """
+
+    def __init__(self, a):
+        """
+        Constructor
+
+        Args:
+            a: value where prob is 1
+        """
+        self.center = a
+
+    def sample(self):
+        """
+        sample method
+
+        Returns:
+            Simply returns the center value as all other values have a probability of 0
+        """
+        return self.center
+
+    def log_prob(self, b):
+        """
+        Log of likelihood probability
+
+        Args:
+            b: Value of observed
+
+        Returns:
+            1 if b is equal to center, 0 otherwise
+        """
+
+        if self.center == b:
+            return torch.tensor(0, dtype=torch.float32)
+        else:
+            return torch.tensor(float('-inf'))
 
 def matadd(a, b):
     """
@@ -778,4 +817,4 @@ primitive_funcs = {'+': add,  # Math operations
                    'gamma': gamma,
                    'dirichlet': dirichlet,
                    'flip': bernoulli,
-                   'dirac': Dirac}
+                   'dirac': Dirac_approx}

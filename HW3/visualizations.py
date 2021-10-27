@@ -1,6 +1,7 @@
 import numpy as np
 
-from graph_based_sampling import gibbs, extract_output_samples, extract_joint_log_prob, hmc
+from graph_based_sampling import gibbs, extract_output_samples, extract_joint_log_prob, hmc, gibbs_program_5, \
+    gibbs_program_5_v2
 from evaluation_based_sampling import evaluate_likelihood_weighting, compute_identity_is_variance, \
     compute_identity_is_expectation, compute_identity_is_dual_covariance
 from daphne import daphne
@@ -348,13 +349,13 @@ if __name__ == '__main__':
     plt.show()
 
     ############################################################################
-    # Program 2
+    # Program 5
 
     graph = daphne(['graph', '-i', '../cpsc532w_hw/HW3/programs/5.daphne'])
     ast = daphne(['desugar', '-i', '../cpsc532w_hw/HW3/programs/5.daphne'])
 
     # Number of iterations
-    iterations = 1000000
+    iterations = 2500000
 
     # Perfrom IS likelihood sampling
     t_start = time.time()
@@ -390,7 +391,7 @@ if __name__ == '__main__':
     # Perfrom Gibbs Sampling
     iterations = 500000
     t_start = time.time()
-    sampled_node_values = gibbs(graph, iterations)
+    sampled_node_values = gibbs_program_5_v2(graph, iterations)
     print('Program 5 Gibbs sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
 
     # Compute its variance and mean
@@ -413,13 +414,13 @@ if __name__ == '__main__':
 
     # Plot the traces
     plt.figure(30)
-    plt.title('Program 2 - Gibbs Sampling - Trace - X')
+    plt.title('Program 5 - Gibbs Sampling - Trace - X')
     plt.plot(range(len(samples)), np.array(samples)[:, 0])
     plt.xlabel('Iteration')
     plt.ylabel('Output Value')
 
     plt.figure(31)
-    plt.title('Program 2 - Gibbs Sampling - Trace - Y')
+    plt.title('Program 5 - Gibbs Sampling - Trace - Y')
     plt.plot(range(len(samples)), np.array(samples)[:, 1])
     plt.xlabel('Iteration')
     plt.ylabel('Output Value')
@@ -433,9 +434,9 @@ if __name__ == '__main__':
     plt.ylabel('Joint Probability')
 
     # Perfrom HMC Sampling
-    iterations = 200000
+    iterations = 20000
     t_start = time.time()
-    sampled_node_values = hmc(graph, iterations, 5, 0.05, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
+    sampled_node_values = hmc(graph, iterations, 40, 0.1, torch.eye(len(graph[1]['V']) - len(graph[1]['Y'])))
     print('Program 5 HMC sampler: It took {} seconds with {} iterations.'.format((time.time() - t_start), iterations))
 
     # Compute its variance and mean
@@ -464,7 +465,7 @@ if __name__ == '__main__':
     plt.ylabel('Output Value')
 
     plt.figure(36)
-    plt.title('Program 2 - HMC Sampling - Trace - Y')
+    plt.title('Program 5 - HMC Sampling - Trace - Y')
     plt.plot(range(len(samples)), samples.detach().numpy()[:, 1])
     plt.xlabel('Iteration')
     plt.ylabel('Output Value')
@@ -476,7 +477,7 @@ if __name__ == '__main__':
     plt.plot(range(len(joint_log_probs)), joint_log_probs)
     plt.xlabel('Iteration')
     plt.ylabel('Joint Probability')
-
+    #
     plt.show()
 
     ############################################################################
