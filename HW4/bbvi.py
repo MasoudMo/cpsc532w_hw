@@ -5,11 +5,8 @@ import wandb
 import numpy as np
 from daphne import daphne
 from copy import deepcopy
-from primitives import primitive_funcs
 import time
-from distributions import Normal, Dirichlet, Categorical, Gamma, Bernoulli
-from math import isnan
-import matplotlib.pyplot as plt
+from distributions import Normal, Dirichlet, Categorical, Gamma
 
 
 VISUALIZE = True
