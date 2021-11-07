@@ -1,7 +1,9 @@
+
+import sys
 from primitives import env as penv
 from daphne import daphne
 from tests import is_tol, run_prob_test, load_truth
-from pyrsistent import pmap, plist
+from pyrsistent import pmap
 import torch
 
 
@@ -222,4 +224,4 @@ if __name__ == '__main__':
         print(i)
         exp = daphne(['desugar-hoppl', '-i', '../cpsc532w_hw/HW5/programs/{}.daphne'.format(i)])
         print('\n\n\nSample of prior of program {}:'.format(i))
-        print(evaluate(exp))        
+        print(evaluate(exp))
