@@ -316,6 +316,8 @@ def create_vec(*args):
     """
 
     # May have dist objects as elements therefore tensor cannot always be used.
+    if len(args[1:]) == 0:
+        return torch.tensor(args[1:])
     try:
         return torch.stack(list(args[1:]))
     except:
@@ -332,6 +334,9 @@ def create_list(*args):
     Returns:
         List of arguments
     """
+
+    if len(args[1:]) == 0:
+        return list()
 
     return list(list(args[1:]))
 
@@ -465,22 +470,26 @@ def conj(alpha, a, b):
         b appended to a
     """
 
-    if type(b) is list:
-        if b:
-            if type(a) is list:
-                return a.extend(b)
+    # Different behaviour when a is a list or a tensor
+    if a is not None:
+        if type(a) is list:
+            if b:
+                if torch.is_tensor(b):
+                    b = b.detach().tolist()
+                if type(b) is not list:
+                    b = [b]
+                return b.extend(a)
             else:
-                return list(a).extend(b)
+                return a
         else:
-            return a
+            if a.dim() == 0:
+                a = a.reshape(1)
+            if b.dim() == 0:
+                b = b.reshape(1)
 
+            return torch.cat((a, b), dim=0)
     else:
-        if a.dim() == 0:
-            a = a.reshape(1)
-        if b.dim() == 0:
-            b = b.reshape(1)
-
-        return torch.cat((a, b), dim=0)
+        return b
 
 
 def cons(alpha, a, b):
