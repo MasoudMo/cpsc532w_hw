@@ -2,5 +2,5 @@
 (defn map [f values]
    (if (empty? values)
        []
-       (cons (f (first values)) (map f (rest values)))))
+       (conj (f (first values)) (map f (rest values)))))
 (map (fn [y] (+ 1 y)) [1 2 3])

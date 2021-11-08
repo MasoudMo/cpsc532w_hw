@@ -505,22 +505,25 @@ def cons(alpha, a, b):
         a prepended to b
     """
 
-    if type(b) is list:
-        if b:
-            if type(a) is list:
-                return a.extend(b)
+    if a is not None:
+        if type(a) is list:
+            if b:
+                if torch.is_tensor(b):
+                    b = b.detach().tolist()
+                if type(b) is not list:
+                    b = [b]
+                return b.extend(a)
             else:
-                return list(a).extend(b)
+                return a
         else:
-            return a
+            if a.dim() == 0:
+                a = a.reshape(1)
+            if b.dim() == 0:
+                b = b.reshape(1)
 
+            return torch.cat((b, a), dim=0)
     else:
-        if a.dim() == 0:
-            a = a.reshape(1)
-        if b.dim() == 0:
-            b = b.reshape(1)
-
-        return torch.cat((a, b))
+        return b
 
 
 def append(alpha, a, b):
